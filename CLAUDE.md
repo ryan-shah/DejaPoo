@@ -53,13 +53,53 @@ bd close <id>         # Complete work
 
 ## Build & Test
 
-_Flutter project not yet scaffolded — this section gets real commands in Phase 0 (see `dp-atb.6`)._
-
 ```bash
-# After Phase 0:
-# flutter pub get
-# flutter analyze
-# flutter test
+# Install dependencies
+flutter pub get
+
+# Run code generation (Riverpod, Drift, etc.)
+dart run build_runner build --delete-conflicting-outputs
+
+# Static analysis (CI uses --no-fatal-infos)
+flutter analyze
+
+# Run all tests
+flutter test
+
+# Run a single test file
+flutter test test/path/to/test.dart
+
+# Run on Chrome (web)
+flutter run -d chrome
+
+# Run on connected Android device/emulator
+flutter run -d android
+
+# Build web release (for GitHub Pages)
+flutter build web --release --base-href /DejaPoo/
+
+# Build Android APK
+flutter build apk --release
+
+# Build Android App Bundle
+flutter build appbundle --release
+```
+
+## Project Structure
+
+```
+lib/
+  main.dart              # App entry point
+  app.dart               # MaterialApp.router widget
+  data/                  # Repositories, data sources, DTOs
+  domain/                # Entities, value objects, enums
+  features/              # Feature modules (home/, reports/, settings/)
+  ui/
+    theme/               # Design tokens, color schemes, ThemeData
+    routing/             # go_router configuration, shell scaffold
+    widgets/             # Shared widgets (Bristol icons, etc.)
+assets/
+  icons/                 # Bristol type 1-7 SVG icons
 ```
 
 ## Architecture & Design
