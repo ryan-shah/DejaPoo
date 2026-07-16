@@ -18,14 +18,18 @@
   UTC-normalization bug (see gotchas), fixed with LocalDateTimeConverter
 
 ## In progress
-- `dp-2ri.6` Web WASM smoke test + CI step — next up
+- `dp-2ri.6` Web WASM smoke test + CI step — test written (`test/web/db_smoke_test.dart`,
+  wasm loaded from asset bundle via rootBundle — fetching an unserved URL hangs the suite),
+  CI step added to test.yml, `web/sqlite3.wasm` declared as pubspec asset. Local
+  `--platform chrome` runs wedge on this machine (`dp-0ot`, see CLAUDE.md Test-run rules),
+  so the gate is CI: push, then confirm the "Tests" workflow chrome step is green.
 
 ## Next steps
 <!-- Executable by a fresh agent with ZERO conversation context. -->
-1. `dp-2ri.6`: `test/web/db_smoke_test.dart` with `@TestOn('browser')` opening a WASM-backed
-   AppDatabase (insert + query one row); run `flutter test --platform chrome test/web`; add that
-   step to `.github/workflows/test.yml`
-2. Then `dp-2ri.7` (verify exit criteria, write `designs/PHASE_1_HANDOFF.md`, close epic).
+1. Commit + push dp-2ri.6 work; `gh run watch` the Tests workflow; if the chrome step is green,
+   `bd close dp-2ri.6`
+2. Then `dp-2ri.7`: verify exit criteria with evidence, write `designs/PHASE_1_HANDOFF.md` from
+   template, delete this file, `bd close dp-2ri.7 dp-2ri`, push.
    Full plan: `~/.claude/plans/lets-come-up-with-gentle-waffle.md`
 
 ## Known issues & gotchas

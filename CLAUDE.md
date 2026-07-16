@@ -63,11 +63,15 @@ dart run build_runner build --delete-conflicting-outputs
 # Static analysis (CI uses --no-fatal-infos)
 flutter analyze
 
-# Run all tests
-flutter test
+# Run all tests (ALWAYS pass --timeout, see Test-run rules below)
+flutter test --timeout 30s
 
 # Run a single test file
-flutter test test/path/to/test.dart
+flutter test --timeout 30s test/path/to/test.dart
+
+# Web (WASM sqlite) smoke test — gate runs in CI; local runs wedge on this
+# Windows machine (see Test-run rules)
+flutter test --platform chrome test/web
 
 # Run on Chrome (web)
 flutter run -d chrome
@@ -84,6 +88,30 @@ flutter build apk --release
 # Build Android App Bundle
 flutter build appbundle --release
 ```
+
+### Test-run rules (learned the hard way, 2026-07-16)
+
+- **Always pass `--timeout 30s` to `flutter test`.** It bounds plain `test()`s; note it does
+  NOT bound `testWidgets` (their 10-minute internal default wins).
+- **The suite is small and fast. A run stalled for minutes is wedged — kill it, don't wait.**
+  Distinguish: testers idling at 0 CPU right after start is normal kernel compilation; a
+  compiler process whose CPU time hasn't moved between two checks minutes apart is a wedge.
+- **Local `flutter test --platform chrome` wedges on this Windows machine** (`dp-0ot`):
+  the frontend compile freezes at ~31 CPUsec, or the suite hangs after "Running test suite".
+  The web smoke gate (`test/web/`) is verified in CI (ubuntu), not locally.
+- **Run long suites detached, redirect output to a file, and poll the file.** Never pipe test
+  output through buffering commands (`tail`, `head`, `Select-Object`) — you fly blind.
+- **Killed `flutter test --platform chrome` runs leak their whole process stack** (dart test
+  runner, frontend_server, headless Chrome). Orphans deadlock later runs on shared build locks.
+  Clean up: kill dart/dartvm/dartaotruntime processes (sparing the IDE's language-server,
+  tooling-daemon, devtools) and chrome.exe processes whose command line contains
+  `flutter_tools`.
+- **Drift + widget tests (Phase 2+):** drift closes `watch()` streams with zero-duration timers
+  at ProviderScope disposal; a `testWidgets` failure like "A Timer is still pending" can wedge
+  flutter_tester at 0 CPU right after the `[E]` line. End any widget test whose tree holds live
+  drift streams with `await tester.pumpWidget(const SizedBox.shrink()); await
+  tester.pump(const Duration(milliseconds: 1));` (the nonzero duration is required).
+- **Checkpoint `PHASE_X_CURRENT_STATUS.md` before starting any long run.**
 
 ## Project Structure
 
