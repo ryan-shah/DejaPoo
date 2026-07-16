@@ -1,0 +1,9 @@
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+
+# Personal reference data — never commit (health data / family photos)
+Alex Bowels.xlsx
+HuckleberryReference/
