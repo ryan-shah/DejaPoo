@@ -12,24 +12,30 @@
 - `dp-2ri.2` Drift database — build_runner clean, analyze clean, tests pass,
   `flutter build web --release` exits 0 with sqlite3.wasm + drift_worker.js in build output;
   schema v1 baseline in `drift_schemas/drift_schema_v1.json`
+- `dp-2ri.3` Repository layer — 12 tests green (CRUD, soft-delete, ranges, watch)
+- `dp-2ri.4` Fixture generator — 7 tests green (determinism, Poisson rate, weights)
+- `dp-2ri.5` Aggregations — 40 tests green total; hand-computed boundary cases caught the drift
+  UTC-normalization bug (see gotchas), fixed with LocalDateTimeConverter
 
 ## In progress
-- `dp-2ri.3` Repository layer — next up
+- `dp-2ri.6` Web WASM smoke test + CI step — next up
 
 ## Next steps
 <!-- Executable by a fresh agent with ZERO conversation context. -->
-1. `dp-2ri.3`: `BowelMovementRepository` abstract class in `lib/domain/`; Drift impl in
-   `lib/data/repositories/` (uuid v4 ids, injectable clock, soft-delete filter everywhere);
-   riverpod providers in `lib/data/providers.dart`; CRUD tests in `test/data/repository_test.dart`
-   with `AppDatabase(NativeDatabase.memory())`
-2. Then `dp-2ri.4` (fixtures) → `.5` (aggregations) → `.6` (web smoke + CI) → `.7` (handoff).
+1. `dp-2ri.6`: `test/web/db_smoke_test.dart` with `@TestOn('browser')` opening a WASM-backed
+   AppDatabase (insert + query one row); run `flutter test --platform chrome test/web`; add that
+   step to `.github/workflows/test.yml`
+2. Then `dp-2ri.7` (verify exit criteria, write `designs/PHASE_1_HANDOFF.md`, close epic).
    Full plan: `~/.claude/plans/lets-come-up-with-gentle-waffle.md`
 
 ## Known issues & gotchas
 - `*.g.dart` is gitignored; CI runs build_runner before analyze/test, so generated code must never
   be committed
-- `occurredAt` is persisted as **local wall time** ISO-8601 text (drift text mode) so SQL
-  `date(occurred_at)` groups by the user's calendar day; created/updated/deletedAt stored UTC
+- **Drift text mode normalizes datetimes to UTC on write** — it does NOT keep local wall time.
+  `occurredAt` therefore uses a custom `LocalDateTimeConverter` (TEXT column, local wall-time ISO,
+  no zone suffix) in `lib/data/db/bowel_movements_table.dart` so `date(occurred_at)` groups by the
+  user's calendar day. Sync timestamps (created/updated/deletedAt) stay drift-managed UTC text.
+  Range queries must compare via `LocalDateTimeConverter().toSql(...)` strings.
 - **drift and drift_dev are pinned to exactly 2.34.0** — drift_dev 2.34.0's schema tool breaks
   against drift 2.34.2, and drift_dev ≥2.34.1+1 needs analyzer ^13 which conflicts with
   riverpod_generator 4.x (analyzer ^12). Bump both together, in lockstep, when upgrading.

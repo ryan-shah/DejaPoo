@@ -28,12 +28,16 @@
           {
             "name": "occurred_at",
             "getter_name": "occurredAt",
-            "moor_type": "dateTime",
+            "moor_type": "string",
             "nullable": false,
             "customConstraints": null,
             "default_dart": null,
             "default_client_dart": null,
-            "dsl_features": []
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const LocalDateTimeConverter()",
+              "dart_type_name": "DateTime"
+            }
           },
           {
             "name": "date_only",

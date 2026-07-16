@@ -1,6 +1,20 @@
 import 'package:dejapoo/domain/domain.dart';
 import 'package:drift/drift.dart';
 
+/// Stores a [DateTime] as local wall-time ISO-8601 text (no zone suffix, e.g.
+/// `2026-07-10T23:59:59.000`) so SQL `date(occurred_at)` groups events by the
+/// user's calendar day. Drift's own text mode normalizes datetimes to UTC,
+/// which shifts late-evening events onto the wrong day.
+class LocalDateTimeConverter extends TypeConverter<DateTime, String> {
+  const LocalDateTimeConverter();
+
+  @override
+  DateTime fromSql(String fromDb) => DateTime.parse(fromDb);
+
+  @override
+  String toSql(DateTime value) => value.toLocal().toIso8601String();
+}
+
 /// Maps [BristolType] to its chart number (1-7) in the database, matching the
 /// data model in designs/DESIGN.md (not the enum index).
 class BristolTypeConverter extends TypeConverter<BristolType, int> {
@@ -22,7 +36,7 @@ class BristolTypeConverter extends TypeConverter<BristolType, int> {
 @UseRowClass(BowelMovement, generateInsertable: true)
 class BowelMovements extends Table {
   TextColumn get id => text()();
-  DateTimeColumn get occurredAt => dateTime()();
+  TextColumn get occurredAt => text().map(const LocalDateTimeConverter())();
   BoolColumn get dateOnly => boolean().withDefault(const Constant(false))();
   IntColumn get bristolType => integer().map(const BristolTypeConverter())();
   IntColumn get size => intEnum<StoolSize>().nullable()();

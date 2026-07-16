@@ -1,3 +1,4 @@
+import 'package:dejapoo/domain/aggregates.dart';
 import 'package:dejapoo/domain/bowel_movement.dart';
 import 'package:dejapoo/domain/bristol_type.dart';
 import 'package:dejapoo/domain/stool_color.dart';
@@ -41,4 +42,41 @@ abstract class BowelMovementRepository {
 
   /// Watches movements with `occurredAt` in `[from, to)`, newest first.
   Stream<List<BowelMovement>> watchRange(DateTime from, DateTime to);
+
+  // Aggregations. Ranges are calendar-day based and inclusive on both ends;
+  // only the date components of [firstDay]/[lastDay] are used. Weekly and
+  // monthly figures are rollups of the daily counts (see rollUpByWeek /
+  // rollUpByMonth in aggregates.dart).
+
+  /// Per-day, per-type counts for days in `[firstDay, lastDay]`, ordered by
+  /// day then type. Days without events are absent.
+  Future<List<DailyTypeCount>> dailyTypeCounts(
+    DateTime firstDay,
+    DateTime lastDay,
+  );
+
+  /// Total events per type over `[firstDay, lastDay]`. Types without events
+  /// are absent.
+  Future<Map<BristolType, int>> typeDistribution(
+    DateTime firstDay,
+    DateTime lastDay,
+  );
+
+  /// Total event count over `[firstDay, lastDay]`.
+  Future<int> totalCount(DateTime firstDay, DateTime lastDay);
+
+  /// [totalCount] divided by the number of days in `[firstDay, lastDay]`.
+  Future<double> averagePerDay(DateTime firstDay, DateTime lastDay);
+
+  /// Longest run of consecutive zero-event days strictly between two event
+  /// days within `[firstDay, lastDay]`; 0 with fewer than two event days.
+  Future<int> longestGapDays(DateTime firstDay, DateTime lastDay);
+
+  /// Longest run of consecutive days with at least one event within
+  /// `[firstDay, lastDay]`.
+  Future<int> longestStreakDays(DateTime firstDay, DateTime lastDay);
+
+  /// Consecutive event days ending at [today] (or yesterday, if [today] has
+  /// no events yet), looking back over all history.
+  Future<int> currentStreakDays(DateTime today);
 }

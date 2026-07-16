@@ -1,4 +1,5 @@
 import 'package:dejapoo/data/db/app_database.dart';
+import 'package:dejapoo/data/db/bowel_movements_table.dart';
 import 'package:dejapoo/domain/domain.dart';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
@@ -111,12 +112,140 @@ class DriftBowelMovementRepository implements BowelMovementRepository {
       ..where(
         ($BowelMovementsTable t) =>
             t.deletedAt.isNull() &
-            t.occurredAt.isBiggerOrEqualValue(from.toLocal()) &
-            t.occurredAt.isSmallerThanValue(to.toLocal()),
+            t.occurredAt.isBiggerOrEqualValue(
+              const LocalDateTimeConverter().toSql(from),
+            ) &
+            t.occurredAt.isSmallerThanValue(
+              const LocalDateTimeConverter().toSql(to),
+            ),
       )
       ..orderBy(<OrderClauseGenerator<$BowelMovementsTable>>[
         ($BowelMovementsTable t) =>
             OrderingTerm(expression: t.occurredAt, mode: OrderingMode.desc),
       ]);
+  }
+
+  @override
+  Future<List<DailyTypeCount>> dailyTypeCounts(
+    DateTime firstDay,
+    DateTime lastDay,
+  ) async {
+    final List<QueryRow> rows = await _db.customSelect(
+      'SELECT date(occurred_at) AS day, bristol_type AS type, '
+      'COUNT(*) AS cnt '
+      'FROM bowel_movements '
+      'WHERE deleted_at IS NULL AND date(occurred_at) BETWEEN ? AND ? '
+      'GROUP BY day, type '
+      'ORDER BY day, type',
+      variables: <Variable<Object>>[
+        Variable<String>(_dayKey(firstDay)),
+        Variable<String>(_dayKey(lastDay)),
+      ],
+      readsFrom: <ResultSetImplementation<dynamic, dynamic>>{_table},
+    ).get();
+    return <DailyTypeCount>[
+      for (final QueryRow row in rows)
+        DailyTypeCount(
+          day: DateTime.parse(row.read<String>('day')),
+          type: BristolType.fromNumber(row.read<int>('type')),
+          count: row.read<int>('cnt'),
+        ),
+    ];
+  }
+
+  @override
+  Future<Map<BristolType, int>> typeDistribution(
+    DateTime firstDay,
+    DateTime lastDay,
+  ) async {
+    final List<QueryRow> rows = await _db.customSelect(
+      'SELECT bristol_type AS type, COUNT(*) AS cnt '
+      'FROM bowel_movements '
+      'WHERE deleted_at IS NULL AND date(occurred_at) BETWEEN ? AND ? '
+      'GROUP BY type',
+      variables: <Variable<Object>>[
+        Variable<String>(_dayKey(firstDay)),
+        Variable<String>(_dayKey(lastDay)),
+      ],
+      readsFrom: <ResultSetImplementation<dynamic, dynamic>>{_table},
+    ).get();
+    return <BristolType, int>{
+      for (final QueryRow row in rows)
+        BristolType.fromNumber(row.read<int>('type')): row.read<int>('cnt'),
+    };
+  }
+
+  @override
+  Future<int> totalCount(DateTime firstDay, DateTime lastDay) async {
+    final QueryRow row = await _db.customSelect(
+      'SELECT COUNT(*) AS cnt FROM bowel_movements '
+      'WHERE deleted_at IS NULL AND date(occurred_at) BETWEEN ? AND ?',
+      variables: <Variable<Object>>[
+        Variable<String>(_dayKey(firstDay)),
+        Variable<String>(_dayKey(lastDay)),
+      ],
+      readsFrom: <ResultSetImplementation<dynamic, dynamic>>{_table},
+    ).getSingle();
+    return row.read<int>('cnt');
+  }
+
+  @override
+  Future<double> averagePerDay(DateTime firstDay, DateTime lastDay) async {
+    final int days = DateTime.utc(lastDay.year, lastDay.month, lastDay.day)
+            .difference(
+              DateTime.utc(firstDay.year, firstDay.month, firstDay.day),
+            )
+            .inDays +
+        1;
+    if (days <= 0) {
+      return 0;
+    }
+    return await totalCount(firstDay, lastDay) / days;
+  }
+
+  @override
+  Future<int> longestGapDays(DateTime firstDay, DateTime lastDay) async {
+    return longestGap(await _eventDays(firstDay, lastDay));
+  }
+
+  @override
+  Future<int> longestStreakDays(DateTime firstDay, DateTime lastDay) async {
+    return longestStreak(await _eventDays(firstDay, lastDay));
+  }
+
+  @override
+  Future<int> currentStreakDays(DateTime today) async {
+    final List<QueryRow> rows = await _db.customSelect(
+      'SELECT DISTINCT date(occurred_at) AS day FROM bowel_movements '
+      'WHERE deleted_at IS NULL AND date(occurred_at) <= ?',
+      variables: <Variable<Object>>[Variable<String>(_dayKey(today))],
+      readsFrom: <ResultSetImplementation<dynamic, dynamic>>{_table},
+    ).get();
+    return currentStreak(
+      rows.map((QueryRow row) => DateTime.parse(row.read<String>('day'))),
+      today,
+    );
+  }
+
+  Future<List<DateTime>> _eventDays(DateTime firstDay, DateTime lastDay) async {
+    final List<QueryRow> rows = await _db.customSelect(
+      'SELECT DISTINCT date(occurred_at) AS day FROM bowel_movements '
+      'WHERE deleted_at IS NULL AND date(occurred_at) BETWEEN ? AND ?',
+      variables: <Variable<Object>>[
+        Variable<String>(_dayKey(firstDay)),
+        Variable<String>(_dayKey(lastDay)),
+      ],
+      readsFrom: <ResultSetImplementation<dynamic, dynamic>>{_table},
+    ).get();
+    return <DateTime>[
+      for (final QueryRow row in rows)
+        DateTime.parse(row.read<String>('day')),
+    ];
+  }
+
+  static String _dayKey(DateTime day) {
+    final String month = day.month.toString().padLeft(2, '0');
+    final String dayOfMonth = day.day.toString().padLeft(2, '0');
+    return '${day.year}-$month-$dayOfMonth';
   }
 }
