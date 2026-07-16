@@ -1,0 +1,59 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
+          plugins: 'code-review@claude-code-plugins'
+          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }} --comment'
+          use_sticky_comment: true
+          claude_args: '--allowedTools "Bash(gh *)" WebFetch'
+
+      - name: Post review status comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          OUTCOME="${{ steps.claude-review.outcome }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          MARKER="<!-- claude-review-status -->"
+
+          if [ "$OUTCOME" = "success" ]; then
+            BODY="${MARKER}
+          :white_check_mark: **Claude Code Review** completed. Any findings have been posted as inline review comments. If no inline comments appear, no issues were found."
+          else
+            BODY="${MARKER}
+          :warning: **Claude Code Review** did not complete — this may be due to a usage limit or a transient error. Please re-run the workflow or review manually."
+          fi
+
+          # Update existing status comment if present, otherwise create one
+          EXISTING=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+            --jq "[.[] | select(.body | contains(\"${MARKER}\"))] | first | .id // empty")
+
+          if [ -n "$EXISTING" ]; then
+            gh api "repos/${{ github.repository }}/issues/comments/${EXISTING}" \
+              -X PATCH --field "body=${BODY}"
+          else
+            gh pr comment "${PR_NUMBER}" --body "${BODY}" --repo "${{ github.repository }}"
+          fi
