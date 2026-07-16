@@ -1,0 +1,10 @@
+targets:
+  $default:
+    builders:
+      drift_dev:
+        options:
+          # Datetimes are persisted as ISO-8601 text. occurredAt is written as
+          # local wall time so SQL date(occurred_at) groups by the user's
+          # calendar day; sync timestamps (createdAt/updatedAt/deletedAt) are
+          # written as UTC. See designs/PHASE docs for rationale.
+          store_date_time_values_as_text: true
