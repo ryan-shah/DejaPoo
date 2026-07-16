@@ -27,7 +27,9 @@ Reference files are **local-only and gitignored** (personal health data / family
   color swatches, consistency icons, toggle rows); free-text note; one big Save button.
 - **Reports:** Day/Week/List/Summary tabs, range chips (7D/14D/30D), average stat tiles with icons,
   stacked bar chart by day, bottom nav (Home / Reports / Insights / …).
-- **Visual language:** dark navy background, bright green accent, white text, generous spacing.
+- **Visual language:** sage green (#6FAE8D) primary, forest green (#3E6B48) secondary, warm sand
+  (#E9DFC8) accent, off-white (#FAFAF7) background. Light-first with derived dark variant.
+  Generous spacing, clean minimal UI.
 
 ## Stack
 
@@ -127,4 +129,7 @@ retrofitted.
 
 ## Deviation log
 
-_None yet. Record as: `YYYY-MM-DD — what changed and why`._
+2026-07-16 — Color palette changed from Huckleberry's dark-navy/lime-green to a custom
+sage-green/off-white scheme (Primary #6FAE8D, Secondary #3E6B48, Accent #E9DFC8, Background
+#FAFAF7, Error #D96C6C). Default theme mode changed from dark to light. Dark variant derived
+from same hues. User-directed decision.
