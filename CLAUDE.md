@@ -53,18 +53,62 @@ bd close <id>         # Complete work
 
 ## Build & Test
 
-_Add your build and test commands here_
+_Flutter project not yet scaffolded — this section gets real commands in Phase 0 (see `dp-atb.6`)._
 
 ```bash
-# Example:
-# npm install
-# npm test
+# After Phase 0:
+# flutter pub get
+# flutter analyze
+# flutter test
 ```
 
-## Architecture Overview
+## Architecture & Design
 
-_Add a brief overview of your project architecture_
+**`designs/DESIGN.md` is the authoritative design document** — product scope, stack, data model,
+and the Phase 0–6 breakdown with exit criteria. Read it before starting work. If implementation
+deviates from it, record the deviation in its dated deviation log.
+
+Current work status lives in `designs/PHASE_X_CURRENT_STATUS.md` (one per active phase);
+completed phases have a `designs/PHASE_X_HANDOFF.md`. Templates for both are in `designs/templates/`.
+
+## Agent Workflow: Phases, Status & Handoff
+
+Work is organized into phases, each tracked as a beads epic (`dp-atb` … `dp-bjs`). These rules
+exist so any session can end abruptly (usage limits, disconnects) without stranding work, and so
+a fresh agent can resume with zero conversation context.
+
+### Session start protocol
+
+1. Read `designs/DESIGN.md` and the current `designs/PHASE_X_CURRENT_STATUS.md`
+2. `git pull --rebase`
+3. `bd ready` to find unblocked work; `bd show <id>` then `bd update <id> --claim`
+
+### During work
+
+- **Beads is the sole task tracker.** Status/handoff docs are narrative context — never put
+  checkbox task lists in them; reference bd ids instead.
+- **Expand epics at phase start:** before coding a phase, break its epic into child bd issues
+  (`bd create --parent <epic-id>`), then claim one. Phase 0 is pre-seeded (`dp-atb.1`–`dp-atb.6`).
+- **Commit and push after every completed bd issue**, not just at session end. A cutoff must
+  never strand more than one issue's work.
+- **Update `PHASE_X_CURRENT_STATUS.md`** (copy from `designs/templates/PHASE_STATUS_TEMPLATE.md`)
+  when completing an issue, making a design decision, or before any long/risky operation. It is a
+  snapshot, not a log: keep it under ~100 lines and overwrite stale content. Its "Next steps"
+  section must be executable by a zero-context agent (exact files, commands, bd ids).
+- **When context runs low, stop starting new work.** Update the status doc, commit, push. Never
+  leave work uncommitted while beginning something new.
+- **Record insights/gotchas with `bd remember`** so they survive across sessions.
+
+### Phase completion
+
+1. Verify every exit criterion in `designs/DESIGN.md` with evidence (`flutter analyze`,
+   `flutter test`, platform builds — not just "it should work")
+2. Write `designs/PHASE_X_HANDOFF.md` (copy from `designs/templates/PHASE_HANDOFF_TEMPLATE.md`),
+   then delete that phase's `PHASE_X_CURRENT_STATUS.md`
+3. File bd issues for anything deferred; `bd close` the epic's children and the epic
+4. Commit, push, and run the Session Completion checklist above
 
 ## Conventions & Patterns
 
-_Add your project-specific conventions here_
+- Personal reference data (`Alex Bowels.xlsx`, `HuckleberryReference/`) is **local-only and
+  gitignored** — never commit it; tests use synthetic fixtures instead.
