@@ -15,11 +15,23 @@ design document and phase breakdown.
 |---|---|---|
 | 0 | Scaffold, theme system, navigation shell, Bristol type icons | ✅ Done |
 | 1 | Data layer: Drift (SQLite) schema, repositories, aggregation queries, WASM web DB | ✅ Done |
-| 2 | Logging UX: home timeline, add/edit bottom sheet, quick-log | 🔜 Next |
+| 2 | Logging UX: home timeline, add/edit bottom sheet, quick-log | ✅ Done |
 | 3 | Metrics & reports (stat tiles, charts, range selector) | Planned |
 | 4 | Historical spreadsheet import (XLSX/CSV) | Planned |
 | 5 | Google Drive sync & export | Planned |
 | 6 | Polish & release readiness | Planned |
+
+## Features (so far)
+
+- **Home timeline** — today-at-a-glance header with count + most-recent type, reverse-chron
+  entries grouped by calendar day
+- **Add/edit entry** — bottom sheet with Bristol type picker, optional size/color/notes;
+  swipe right on an entry to edit, tap to view
+- **Quick-log** — FAB long-press opens a compact popup of all 7 Bristol type icons; one tap
+  saves an entry instantly (< 5 seconds from launch to logged)
+- **Delete with undo** — swipe left to soft-delete, SnackBar with Undo restores the entry
+- **Persistent local storage** — Drift/SQLite on native, WASM sqlite on web; soft-delete
+  tombstones for future sync
 
 ## Stack
 
