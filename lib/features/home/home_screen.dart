@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:collection';
 
+import 'package:dejapoo/data/providers.dart';
 import 'package:dejapoo/domain/domain.dart';
 import 'package:dejapoo/features/home/providers/timeline_providers.dart';
 import 'package:dejapoo/features/home/widgets/entry_sheet.dart';
@@ -91,15 +93,15 @@ class _EmptyState extends StatelessWidget {
 }
 
 /// The scrollable timeline with the today header, day section headers,
-/// and entry tiles.
-class _TimelineList extends StatelessWidget {
+/// and entry tiles with swipe-to-edit and swipe-to-delete gestures.
+class _TimelineList extends ConsumerWidget {
   const _TimelineList({required this.entries, required this.summary});
 
   final List<BowelMovement> entries;
   final TodaySummary summary;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final LinkedHashMap<DateTime, List<BowelMovement>> grouped =
         groupEntriesByDay(entries);
 
@@ -115,10 +117,7 @@ class _TimelineList extends StatelessWidget {
       slivers.add(_DaySectionHeader(date: group.key));
       for (final BowelMovement entry in group.value) {
         slivers.add(
-          TimelineEntryTile(
-            entry: entry,
-            onTap: () => showEntrySheet(context, existing: entry),
-          ),
+          _DismissibleEntryTile(entry: entry, ref: ref),
         );
       }
     }
@@ -127,6 +126,73 @@ class _TimelineList extends StatelessWidget {
     slivers.add(const SizedBox(height: 80));
 
     return ListView(children: slivers);
+  }
+}
+
+/// A [TimelineEntryTile] wrapped in a [Dismissible] that supports
+/// swipe-right to edit and swipe-left to delete with undo.
+class _DismissibleEntryTile extends StatelessWidget {
+  const _DismissibleEntryTile({
+    required this.entry,
+    required this.ref,
+  });
+
+  final BowelMovement entry;
+  final WidgetRef ref;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme colors = Theme.of(context).colorScheme;
+
+    return Dismissible(
+      key: ValueKey<String>(entry.id),
+      background: Container(
+        color: Colors.green,
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.only(left: Spacing.md),
+        child: const Icon(Icons.edit, color: Colors.white),
+      ),
+      secondaryBackground: Container(
+        color: colors.error,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: Spacing.md),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      confirmDismiss: (DismissDirection direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          // Swipe right: open the edit sheet, don't dismiss the tile.
+          unawaited(showEntrySheet(context, existing: entry));
+          return false;
+        }
+        // Swipe left: allow dismiss for deletion.
+        return true;
+      },
+      onDismissed: (DismissDirection direction) {
+        // Capture the full entity before deletion for undo.
+        final BowelMovement deletedEntry = entry;
+        final BowelMovementRepository repo =
+            ref.read(bowelMovementRepositoryProvider);
+        repo.softDelete(entry.id);
+
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: const Text('Entry deleted'),
+              action: SnackBarAction(
+                label: 'Undo',
+                onPressed: () {
+                  repo.update(deletedEntry);
+                },
+              ),
+            ),
+          );
+      },
+      child: TimelineEntryTile(
+        entry: entry,
+        onTap: () => showEntrySheet(context, existing: entry),
+      ),
+    );
   }
 }
 
