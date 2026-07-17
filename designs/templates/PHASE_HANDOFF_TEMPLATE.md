@@ -12,6 +12,7 @@
 ## Exit criteria — evidence
 <!-- Every exit criterion from designs/DESIGN.md, each with concrete pass evidence. -->
 - <criterion> — PASS: <evidence, e.g. command output, test counts, platforms verified>
+- README.md updated to reflect this phase (required for every phase) — PASS: <what changed>
 
 ## What changed
 - <key directories/files added or reshaped, and their roles>
