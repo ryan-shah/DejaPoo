@@ -64,6 +64,42 @@ class DriftBowelMovementRepository implements BowelMovementRepository {
   }
 
   @override
+  Future<int> insertAllIfAbsent(List<BowelMovement> movements) async {
+    if (movements.isEmpty) return 0;
+
+    final List<String> allIds = <String>[
+      for (final BowelMovement m in movements) m.id,
+    ];
+    final Set<String> existingIds = <String>{};
+
+    // Chunk id lookups to stay under SQLite's bound-variable limit. Do NOT
+    // filter on deletedAt here — soft-deleted rows must not be resurrected.
+    for (int i = 0; i < allIds.length; i += 500) {
+      final int end = (i + 500).clamp(0, allIds.length);
+      final List<String> chunk = allIds.sublist(i, end);
+      final List<BowelMovement> rows = await (_db.select(_table)
+            ..where(($BowelMovementsTable t) => t.id.isIn(chunk)))
+          .get();
+      existingIds.addAll(rows.map((BowelMovement r) => r.id));
+    }
+
+    final List<BowelMovement> toInsert = movements
+        .where((BowelMovement m) => !existingIds.contains(m.id))
+        .toList();
+    if (toInsert.isEmpty) return 0;
+
+    await _db.batch((Batch batch) {
+      batch.insertAll(
+        _table,
+        toInsert.map((BowelMovement m) => m.toInsertable()),
+        mode: InsertMode.insertOrIgnore,
+      );
+    });
+
+    return toInsert.length;
+  }
+
+  @override
   Future<BowelMovement> update(BowelMovement movement) async {
     final BowelMovement updated = movement.copyWith(
       occurredAt: movement.occurredAt.toLocal(),
