@@ -79,4 +79,7 @@ abstract class BowelMovementRepository {
   /// Consecutive event days ending at [today] (or yesterday, if [today] has
   /// no events yet), looking back over all history.
   Future<int> currentStreakDays(DateTime today);
+
+  /// Hard-deletes every row in the table (demo/fixture teardown only).
+  Future<void> deleteAll();
 }

@@ -243,6 +243,11 @@ class DriftBowelMovementRepository implements BowelMovementRepository {
     ];
   }
 
+  @override
+  Future<void> deleteAll() async {
+    await _db.delete(_table).go();
+  }
+
   static String _dayKey(DateTime day) {
     final String month = day.month.toString().padLeft(2, '0');
     final String dayOfMonth = day.day.toString().padLeft(2, '0');
