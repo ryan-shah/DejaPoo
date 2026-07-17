@@ -5,6 +5,7 @@ import 'package:dejapoo/data/providers.dart';
 import 'package:dejapoo/domain/domain.dart';
 import 'package:dejapoo/features/home/providers/timeline_providers.dart';
 import 'package:dejapoo/features/home/widgets/entry_sheet.dart';
+import 'package:dejapoo/features/home/widgets/quick_log_popup.dart';
 import 'package:dejapoo/features/home/widgets/timeline_entry_tile.dart';
 import 'package:dejapoo/features/home/widgets/today_header.dart';
 import 'package:dejapoo/ui/theme/tokens.dart';
@@ -36,12 +37,33 @@ class HomeScreen extends ConsumerWidget {
           return _TimelineList(entries: entries, summary: summary);
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => showEntrySheet(context),
-        child: const Icon(Icons.add),
+      floatingActionButton: GestureDetector(
+        onLongPress: () => _quickLog(context, ref),
+        child: FloatingActionButton(
+          onPressed: () => showEntrySheet(context),
+          child: const Icon(Icons.add),
+        ),
       ),
     );
   }
+}
+
+/// Handles the FAB long-press: shows the quick-log popup, saves the entry,
+/// and shows a confirmation SnackBar.
+Future<void> _quickLog(BuildContext context, WidgetRef ref) async {
+  final BristolType? type = await showQuickLogPopup(context);
+  if (type == null || !context.mounted) return;
+
+  final BowelMovementRepository repo =
+      ref.read(bowelMovementRepositoryProvider);
+  await repo.create(occurredAt: DateTime.now(), bristolType: type);
+
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(content: Text('Type ${type.number} logged')),
+    );
 }
 
 /// Shown when there are no entries in the last 30 days.
