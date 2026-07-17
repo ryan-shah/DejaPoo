@@ -24,15 +24,8 @@ dev_dependencies:
   build_runner: ^2.4.14
   riverpod_generator: ^4.0.1
   drift_dev: 2.34.0
-  # Direct dep because test/web/ imports package:sqlite3/wasm.dart;
-  # version must stay compatible with the pinned drift 2.34.0.
-  sqlite3: ^3.4.0
 
 flutter:
   uses-material-design: true
   assets:
     - assets/icons/
-    # Bundled so the browser smoke test (test/web/) can load WASM sqlite via
-    # rootBundle; also served from web/ in web builds. ~730KB in app bundles —
-    # revisit if mobile size ever matters.
-    - web/sqlite3.wasm

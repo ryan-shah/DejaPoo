@@ -16,4 +16,3 @@ jobs:
       - run: dart run build_runner build --delete-conflicting-outputs
       - run: flutter analyze --no-fatal-infos
       - run: flutter test --timeout 30s
-      - run: flutter test --platform chrome test/web

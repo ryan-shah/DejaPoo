@@ -18,19 +18,22 @@
   UTC-normalization bug (see gotchas), fixed with LocalDateTimeConverter
 
 ## In progress
-- `dp-2ri.6` Web WASM smoke test + CI step — test written (`test/web/db_smoke_test.dart`,
-  wasm loaded from asset bundle via rootBundle — fetching an unserved URL hangs the suite),
-  CI step added to test.yml, `web/sqlite3.wasm` declared as pubspec asset. Local
-  `--platform chrome` runs wedge on this machine (`dp-0ot`, see CLAUDE.md Test-run rules),
-  so the gate is CI: push, then confirm the "Tests" workflow chrome step is green.
+- `dp-2ri.6` Web WASM smoke verification — DONE pending PR merge. Implemented as runtime
+  DB_SMOKE probe (`lib/data/db/db_smoke_probe.dart`), NOT `flutter test --platform chrome`
+  (unusable: wedges locally `dp-0ot`; CI harness can't serve assets). Evidence on branch
+  `dp-2ri.6-web-wasm-smoke`: "DB_SMOKE OK: insert/read/aggregate/soft-delete round-tripped"
+  observed on Chrome; analyze clean; 40 native tests green; `flutter build web --release`
+  exits 0 with source-compiled drift_worker.js. Deviation recorded in DESIGN.md.
 
 ## Next steps
 <!-- Executable by a fresh agent with ZERO conversation context. -->
-1. Commit + push dp-2ri.6 work; `gh run watch` the Tests workflow; if the chrome step is green,
-   `bd close dp-2ri.6`
+1. Await user review/merge of the `dp-2ri.6-web-wasm-smoke` PR; after merge:
+   `git checkout main && git pull --rebase`, `bd close dp-2ri.6`
 2. Then `dp-2ri.7`: verify exit criteria with evidence, write `designs/PHASE_1_HANDOFF.md` from
    template, delete this file, `bd close dp-2ri.7 dp-2ri`, push.
    Full plan: `~/.claude/plans/lets-come-up-with-gentle-waffle.md`
+3. Unmerged learnings from BinderManager tracked as `dp-mih` (COI service worker for GitHub
+   Pages OPFS; probe confirmed IndexedDB fallback happens today).
 
 ## Known issues & gotchas
 - `*.g.dart` is gitignored; CI runs build_runner before analyze/test, so generated code must never

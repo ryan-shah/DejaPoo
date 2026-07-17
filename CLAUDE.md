@@ -69,9 +69,12 @@ flutter test --timeout 30s
 # Run a single test file
 flutter test --timeout 30s test/path/to/test.dart
 
-# Web (WASM sqlite) smoke test — gate runs in CI; local runs wedge on this
-# Windows machine (see Test-run rules)
-flutter test --platform chrome test/web
+# Web (WASM sqlite) smoke gate — runs the real app on Chrome with the
+# DB_SMOKE probe; expect a "DB_SMOKE OK" console line (see Test-run rules)
+flutter run -d chrome --dart-define=DB_SMOKE=true
+
+# Regenerate web/sqlite3.wasm + web/drift_worker.js after drift/sqlite3 bumps
+dart run tool/setup_web.dart
 
 # Run on Chrome (web)
 flutter run -d chrome
@@ -96,9 +99,12 @@ flutter build appbundle --release
 - **The suite is small and fast. A run stalled for minutes is wedged — kill it, don't wait.**
   Distinguish: testers idling at 0 CPU right after start is normal kernel compilation; a
   compiler process whose CPU time hasn't moved between two checks minutes apart is a wedge.
-- **Local `flutter test --platform chrome` wedges on this Windows machine** (`dp-0ot`):
-  the frontend compile freezes at ~31 CPUsec, or the suite hangs after "Running test suite".
-  The web smoke gate (`test/web/`) is verified in CI (ubuntu), not locally.
+- **Never use `flutter test --platform chrome`** (`dp-0ot`): locally it wedges
+  nondeterministically even for trivial tests (frontend compile freezes at ~28-31 CPUsec); on
+  CI its browser harness cannot serve assets, so `rootBundle` loads hang until timeout. The web
+  smoke gate is the runtime DB_SMOKE probe instead:
+  `flutter run -d chrome --dart-define=DB_SMOKE=true` → look for `DB_SMOKE OK` on the console
+  (`lib/data/db/db_smoke_probe.dart`; uses a throwaway database name).
 - **Run long suites detached, redirect output to a file, and poll the file.** Never pipe test
   output through buffering commands (`tail`, `head`, `Select-Object`) — you fly blind.
 - **Killed `flutter test --platform chrome` runs leak their whole process stack** (dart test
