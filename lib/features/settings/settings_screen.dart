@@ -1,7 +1,11 @@
+import 'dart:typed_data';
+
 import 'package:dejapoo/data/fixtures/fixture_generator.dart';
+import 'package:dejapoo/data/import/import_models.dart';
 import 'package:dejapoo/data/providers.dart';
 import 'package:dejapoo/domain/domain.dart';
 import 'package:dejapoo/ui/theme/theme.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -16,9 +20,119 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: const <Widget>[
+          _ImportSection(),
           if (_demoMode) _DemoDataSection(),
         ],
       ),
+    );
+  }
+}
+
+class _ImportSection extends ConsumerStatefulWidget {
+  const _ImportSection();
+
+  @override
+  ConsumerState<_ImportSection> createState() => _ImportSectionState();
+}
+
+class _ImportSectionState extends ConsumerState<_ImportSection> {
+  bool _loading = false;
+
+  Future<void> _pickAndImport() async {
+    final FilePickerResult? result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: <String>['xlsx', 'csv'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) {
+      return;
+    }
+    final PlatformFile file = result.files.single;
+    final Uint8List? bytes = file.bytes;
+    if (bytes == null) {
+      return;
+    }
+
+    setState(() => _loading = true);
+    ImportSummary summary;
+    try {
+      summary = await ref
+          .read(importServiceProvider)
+          .importBytes(bytes, file.name);
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
+
+    if (!mounted) {
+      return;
+    }
+    final bool failed = summary.insertedCount == 0 && summary.hasErrors;
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: Text(failed ? 'Import Failed' : 'Import Complete'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'Inserted ${summary.insertedCount} events '
+                '(${summary.skippedCount} already existed)',
+              ),
+              if (summary.issues.isNotEmpty) ...<Widget>[
+                const SizedBox(height: Spacing.sm),
+                ...summary.issues.map((ImportIssue issue) => Text('• $issue')),
+              ],
+            ],
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.md,
+            Spacing.md,
+            Spacing.md,
+            Spacing.xs,
+          ),
+          child: Text(
+            'Import',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+          ),
+        ),
+        ListTile(
+          leading: _loading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.upload_file),
+          title: const Text('Import spreadsheet'),
+          subtitle: const Text('Import from XLSX or CSV file'),
+          enabled: !_loading,
+          onTap: _pickAndImport,
+        ),
+        const Divider(),
+      ],
     );
   }
 }
