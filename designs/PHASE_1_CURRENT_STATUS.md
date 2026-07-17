@@ -18,15 +18,22 @@
   UTC-normalization bug (see gotchas), fixed with LocalDateTimeConverter
 
 ## In progress
-- `dp-2ri.6` Web WASM smoke test + CI step — next up
+- `dp-2ri.6` Web WASM smoke verification — DONE pending PR merge. Implemented as runtime
+  DB_SMOKE probe (`lib/data/db/db_smoke_probe.dart`), NOT `flutter test --platform chrome`
+  (unusable: wedges locally `dp-0ot`; CI harness can't serve assets). Evidence on branch
+  `dp-2ri.6-web-wasm-smoke`: "DB_SMOKE OK: insert/read/aggregate/soft-delete round-tripped"
+  observed on Chrome; analyze clean; 40 native tests green; `flutter build web --release`
+  exits 0 with source-compiled drift_worker.js. Deviation recorded in DESIGN.md.
 
 ## Next steps
 <!-- Executable by a fresh agent with ZERO conversation context. -->
-1. `dp-2ri.6`: `test/web/db_smoke_test.dart` with `@TestOn('browser')` opening a WASM-backed
-   AppDatabase (insert + query one row); run `flutter test --platform chrome test/web`; add that
-   step to `.github/workflows/test.yml`
-2. Then `dp-2ri.7` (verify exit criteria, write `designs/PHASE_1_HANDOFF.md`, close epic).
+1. Await user review/merge of the `dp-2ri.6-web-wasm-smoke` PR; after merge:
+   `git checkout main && git pull --rebase`, `bd close dp-2ri.6`
+2. Then `dp-2ri.7`: verify exit criteria with evidence, write `designs/PHASE_1_HANDOFF.md` from
+   template, delete this file, `bd close dp-2ri.7 dp-2ri`, push.
    Full plan: `~/.claude/plans/lets-come-up-with-gentle-waffle.md`
+3. Unmerged learnings from BinderManager tracked as `dp-mih` (COI service worker for GitHub
+   Pages OPFS; probe confirmed IndexedDB fallback happens today).
 
 ## Known issues & gotchas
 - `*.g.dart` is gitignored; CI runs build_runner before analyze/test, so generated code must never

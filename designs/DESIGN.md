@@ -133,3 +133,12 @@ retrofitted.
 sage-green/off-white scheme (Primary #6FAE8D, Secondary #3E6B48, Accent #E9DFC8, Background
 #FAFAF7, Error #D96C6C). Default theme mode changed from dark to light. Dark variant derived
 from same hues. User-directed decision.
+
+2026-07-16 — Phase 1's "web (WASM sqlite) smoke test" is a runtime probe, not a
+`flutter test --platform chrome` unit test. That pipeline proved unusable: it wedges
+nondeterministically on the Windows dev machine even for trivial browser tests (dp-0ot), and
+on CI its harness cannot serve assets so the wasm binary cannot be loaded. The gate is
+`flutter run -d chrome --dart-define=DB_SMOKE=true` → `DB_SMOKE OK` console line
+(`lib/data/db/db_smoke_probe.dart`), which exercises the full production web path (compiled
+drift worker, WASM sqlite, real storage selection) — strictly more than the unit test would
+have. Verification is local-first per user direction; CI runs the native suite only.

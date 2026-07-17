@@ -63,11 +63,18 @@ dart run build_runner build --delete-conflicting-outputs
 # Static analysis (CI uses --no-fatal-infos)
 flutter analyze
 
-# Run all tests
-flutter test
+# Run all tests (ALWAYS pass --timeout, see Test-run rules below)
+flutter test --timeout 30s
 
 # Run a single test file
-flutter test test/path/to/test.dart
+flutter test --timeout 30s test/path/to/test.dart
+
+# Web (WASM sqlite) smoke gate — runs the real app on Chrome with the
+# DB_SMOKE probe; expect a "DB_SMOKE OK" console line (see Test-run rules)
+flutter run -d chrome --dart-define=DB_SMOKE=true
+
+# Regenerate web/sqlite3.wasm + web/drift_worker.js after drift/sqlite3 bumps
+dart run tool/setup_web.dart
 
 # Run on Chrome (web)
 flutter run -d chrome
@@ -84,6 +91,33 @@ flutter build apk --release
 # Build Android App Bundle
 flutter build appbundle --release
 ```
+
+### Test-run rules (learned the hard way, 2026-07-16)
+
+- **Always pass `--timeout 30s` to `flutter test`.** It bounds plain `test()`s; note it does
+  NOT bound `testWidgets` (their 10-minute internal default wins).
+- **The suite is small and fast. A run stalled for minutes is wedged — kill it, don't wait.**
+  Distinguish: testers idling at 0 CPU right after start is normal kernel compilation; a
+  compiler process whose CPU time hasn't moved between two checks minutes apart is a wedge.
+- **Never use `flutter test --platform chrome`** (`dp-0ot`): locally it wedges
+  nondeterministically even for trivial tests (frontend compile freezes at ~28-31 CPUsec); on
+  CI its browser harness cannot serve assets, so `rootBundle` loads hang until timeout. The web
+  smoke gate is the runtime DB_SMOKE probe instead:
+  `flutter run -d chrome --dart-define=DB_SMOKE=true` → look for `DB_SMOKE OK` on the console
+  (`lib/data/db/db_smoke_probe.dart`; uses a throwaway database name).
+- **Run long suites detached, redirect output to a file, and poll the file.** Never pipe test
+  output through buffering commands (`tail`, `head`, `Select-Object`) — you fly blind.
+- **Killed `flutter test --platform chrome` runs leak their whole process stack** (dart test
+  runner, frontend_server, headless Chrome). Orphans deadlock later runs on shared build locks.
+  Clean up: kill dart/dartvm/dartaotruntime processes (sparing the IDE's language-server,
+  tooling-daemon, devtools) and chrome.exe processes whose command line contains
+  `flutter_tools`.
+- **Drift + widget tests (Phase 2+):** drift closes `watch()` streams with zero-duration timers
+  at ProviderScope disposal; a `testWidgets` failure like "A Timer is still pending" can wedge
+  flutter_tester at 0 CPU right after the `[E]` line. End any widget test whose tree holds live
+  drift streams with `await tester.pumpWidget(const SizedBox.shrink()); await
+  tester.pump(const Duration(milliseconds: 1));` (the nonzero duration is required).
+- **Checkpoint `PHASE_X_CURRENT_STATUS.md` before starting any long run.**
 
 ## Project Structure
 
@@ -150,5 +184,10 @@ a fresh agent can resume with zero conversation context.
 
 ## Conventions & Patterns
 
+- **Before touching Drift code** (tables/migrations, datetime columns, web/WASM support,
+  drift tests, or drift/sqlite3/riverpod version bumps), read
+  `.claude/skills/drift-flutter/SKILL.md` (the `drift-flutter` skill). It encodes Phase 1's
+  hard-won rules — the UTC datetime trap, drift/drift_dev version lockstep, the DB_SMOKE web
+  gate, and why `flutter test --platform chrome` must never be used.
 - Personal reference data (`Alex Bowels.xlsx`, `HuckleberryReference/`) is **local-only and
   gitignored** — never commit it; tests use synthetic fixtures instead.
