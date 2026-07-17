@@ -1,6 +1,7 @@
 import 'package:dejapoo/data/providers.dart';
 import 'package:dejapoo/domain/domain.dart';
 import 'package:dejapoo/ui/theme/tokens.dart';
+import 'package:dejapoo/ui/widgets/bristol_icon.dart';
 import 'package:dejapoo/ui/widgets/bristol_type_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -205,7 +206,10 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
               const SizedBox(height: Spacing.lg),
 
               // Bristol type selector
-              const _SectionLabel(label: 'Bristol Type'),
+              _SectionLabelWithHelp(
+                label: 'Bristol Type',
+                onHelp: () => _showBristolTypeHelp(context),
+              ),
               const SizedBox(height: Spacing.sm),
               BristolTypeSelector(
                 selectedType: _bristolType,
@@ -379,6 +383,112 @@ class _SectionLabel extends StatelessWidget {
       style: Theme.of(context).textTheme.titleSmall,
     );
   }
+}
+
+/// A section label with a trailing help icon button.
+class _SectionLabelWithHelp extends StatelessWidget {
+  const _SectionLabelWithHelp({
+    required this.label,
+    required this.onHelp,
+  });
+
+  final String label;
+  final VoidCallback onHelp;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        Text(label, style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(width: Spacing.xs),
+        GestureDetector(
+          onTap: onHelp,
+          child: Icon(
+            Icons.help_outline,
+            size: IconSizes.navIcon,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+const Map<BristolType, String> _bristolDescriptions = <BristolType, String>{
+  BristolType.type1:
+      'Hard, separate lumps that are difficult to pass. May indicate constipation.',
+  BristolType.type2:
+      'Sausage-shaped but lumpy. Slightly constipated.',
+  BristolType.type3:
+      'Sausage-shaped with cracks on the surface. Considered normal.',
+  BristolType.type4:
+      'Smooth, soft sausage or snake. The ideal stool.',
+  BristolType.type5:
+      'Soft blobs with clear-cut edges, passed easily. Tending toward diarrhea.',
+  BristolType.type6:
+      'Fluffy, mushy pieces with ragged edges. Mild diarrhea.',
+  BristolType.type7:
+      'Entirely liquid with no solid pieces. Diarrhea.',
+};
+
+void _showBristolTypeHelp(BuildContext context) {
+  final ThemeData theme = Theme.of(context);
+  final ColorScheme colors = theme.colorScheme;
+
+  showDialog<void>(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text('Bristol Stool Chart'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: BristolType.values.length,
+            separatorBuilder: (_, _) => const Divider(height: Spacing.lg),
+            itemBuilder: (BuildContext context, int index) {
+              final BristolType type = BristolType.values[index];
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  BristolIcon(
+                    type: type,
+                    size: 32,
+                    color: colors.onSurface,
+                  ),
+                  const SizedBox(width: Spacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Type ${type.number} — ${type.label}',
+                          style: theme.textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _bristolDescriptions[type]!,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Got it'),
+          ),
+        ],
+      );
+    },
+  );
 }
 
 /// A tappable tile showing an icon and a label, used for date/time pickers.

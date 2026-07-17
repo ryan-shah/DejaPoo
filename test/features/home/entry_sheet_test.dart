@@ -107,6 +107,29 @@ void main() {
     });
   });
 
+  testWidgets('help icon opens Bristol Stool Chart dialog',
+      (WidgetTester tester) async {
+    await pumpEntrySheet(tester);
+
+    // Tap the help icon next to "Bristol Type" label.
+    await tester.tap(find.byIcon(Icons.help_outline));
+    await tester.pumpAndSettle();
+
+    // Dialog shows the chart title and all 7 type descriptions.
+    expect(find.text('Bristol Stool Chart'), findsOneWidget);
+    for (final BristolType type in BristolType.values) {
+      expect(
+        find.textContaining('Type ${type.number}'),
+        findsWidgets,
+      );
+    }
+
+    // Dismiss the dialog.
+    await tester.tap(find.text('Got it'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bristol Stool Chart'), findsNothing);
+  });
+
   group('Edit mode', () {
     testWidgets('prefills all fields from existing entry',
         (WidgetTester tester) async {
