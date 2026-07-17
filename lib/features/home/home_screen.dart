@@ -24,7 +24,16 @@ class HomeScreen extends ConsumerWidget {
     final TodaySummary summary = ref.watch(todaySummaryProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('DejaPoo')),
+      appBar: AppBar(
+        title: const Text('DejaPoo'),
+        actions: <Widget>[
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: 'Usage tips',
+            onPressed: () => _showUsageTips(context),
+          ),
+        ],
+      ),
       body: timelineAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (Object error, StackTrace stack) => Center(
@@ -44,6 +53,110 @@ class HomeScreen extends ConsumerWidget {
           child: const Icon(Icons.add),
         ),
       ),
+    );
+  }
+}
+
+void _showUsageTips(BuildContext context) {
+  showDialog<void>(
+    context: context,
+    builder: (BuildContext context) {
+      final ThemeData theme = Theme.of(context);
+      final ColorScheme colors = theme.colorScheme;
+
+      return AlertDialog(
+        title: const Text('How to use DejaPoo'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            _UsageTipRow(
+              icon: Icons.add,
+              title: 'Log an entry',
+              description: 'Tap the + button to open the full entry form.',
+              colors: colors,
+              theme: theme,
+            ),
+            const SizedBox(height: Spacing.md),
+            _UsageTipRow(
+              icon: Icons.touch_app,
+              title: 'Quick log',
+              description:
+                  'Long-press the + button for a one-tap type picker — '
+                  'logs instantly, no form needed.',
+              colors: colors,
+              theme: theme,
+            ),
+            const SizedBox(height: Spacing.md),
+            _UsageTipRow(
+              icon: Icons.swipe,
+              title: 'Edit or delete',
+              description:
+                  'Swipe an entry right to edit, or left to delete. '
+                  'Deleted entries can be undone via the snackbar.',
+              colors: colors,
+              theme: theme,
+            ),
+            const SizedBox(height: Spacing.md),
+            _UsageTipRow(
+              icon: Icons.info_outline,
+              title: 'Bristol type help',
+              description:
+                  'Tap the ? icon next to "Bristol Type" in the entry '
+                  'form for a guide to each type.',
+              colors: colors,
+              theme: theme,
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Got it'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+class _UsageTipRow extends StatelessWidget {
+  const _UsageTipRow({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.colors,
+    required this.theme,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final ColorScheme colors;
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Icon(icon, size: 24, color: colors.primary),
+        const SizedBox(width: Spacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(title, style: theme.textTheme.titleSmall),
+              const SizedBox(height: 2),
+              Text(
+                description,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
