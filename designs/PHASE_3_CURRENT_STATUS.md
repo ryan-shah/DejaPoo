@@ -3,28 +3,27 @@
 > Snapshot, not a log. Tasks tracked in beads; reference bd ids.
 
 **Phase:** 3 — Metrics & Reports (bd epic: `dp-85t`)
-**Last updated:** 2026-07-17 17:00
+**Last updated:** 2026-07-17 18:30
 
 ## Done (with verification evidence)
-- (none yet — phase just started)
+- `dp-85t.1` Range model + reports providers — 32 range tests + 9 provider tests, analyze clean
+- `dp-85t.2` fl_chart + Bristol palette + chart widgets — 7 widget tests, fl_chart resolved, analyze clean
+- `dp-85t.3` Reports screen assembly — 6 widget tests (selector, nav, tabs, stats, custom picker, empty), analyze clean
+- Wave 1 commit: `be02b27`; Wave 2 commit: `86b917d`; both pushed to origin/phase_3; 124 total tests green
 
 ## In progress
-- `dp-85t.1` Range model + reports providers — Wave 1, subagent dispatched
-- `dp-85t.2` fl_chart + Bristol palette + chart widgets — Wave 1, subagent dispatched
+- `dp-85t.4` List tab with type filters — Wave 3, subagent dispatched
 
 ## Next steps
-1. Verify Wave 1 subagent outputs: `flutter analyze` clean, `flutter test --timeout 30s` green
-2. Run `dart run build_runner build --delete-conflicting-outputs` after providers land
-3. Start Wave 2: `dp-85t.3` Reports screen assembly (range selector + tabs + Summary tab)
-4. Wave 3: `dp-85t.4` List tab with type filters
-5. Wave 4: `dp-85t.5` Fixture-verified correctness gate
-6. Wave 5: `dp-85t.6` Phase completion (orchestrator-run)
+1. Verify Wave 3 output, merge, commit+push, close dp-85t.4
+2. Wave 4: `dp-85t.5` Fixture-verified correctness gate
+3. Wave 5: `dp-85t.6` Phase completion (orchestrator-run): final verification, README, handoff, PR
 
 ## Known issues & gotchas
-- drift pinned at 2.34.0 exactly; fl_chart has no analyzer dep so should resolve safely
-- `occurredAt` is local wall time — never `.toUtc()` in UI; group by local calendar day
-- Aggregation methods take inclusive first/last days; `watchRange` is half-open `[from, to)`
-- Widget tests with drift streams must end with `pumpWidget(SizedBox.shrink()) + pump(1ms)`
+- Worktree branches start from main, not phase_3 — subagents may need to rebase onto phase_3
+- `flutter clean` changes CWD — always `cd` back before running commands
+- `occurredAt` is local wall time; aggregation = inclusive days; `watchRange` = half-open [from, to)
 
 ## Decisions made this phase
-- 2026-07-17 — Phase 3 orchestration plan committed; child issues dp-85t.1–.6 pre-wired in beads
+- 2026-07-17 — Phase 3 orchestration plan committed; child issues dp-85t.1–.6 pre-wired
+- 2026-07-17 — Bar chart bucketing: week/month=day bars, year=month bars, custom=day if ≤62d else month

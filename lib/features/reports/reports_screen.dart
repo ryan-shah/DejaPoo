@@ -6,6 +6,7 @@ import 'package:dejapoo/features/reports/providers/report_stats.dart';
 import 'package:dejapoo/features/reports/widgets/charts/stacked_type_bar_chart.dart';
 import 'package:dejapoo/features/reports/widgets/charts/type_donut_chart.dart';
 import 'package:dejapoo/features/reports/widgets/range_selector.dart';
+import 'package:dejapoo/features/reports/widgets/reports_list_tab.dart';
 import 'package:dejapoo/features/reports/widgets/stat_tiles.dart';
 import 'package:dejapoo/ui/theme/theme.dart';
 import 'package:flutter/material.dart';
@@ -39,7 +40,7 @@ class ReportsScreen extends StatelessWidget {
               child: TabBarView(
                 children: <Widget>[
                   _SummaryTab(),
-                  _ListTabPlaceholder(),
+                  ReportsListTab(),
                 ],
               ),
             ),
@@ -47,15 +48,6 @@ class ReportsScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _ListTabPlaceholder extends StatelessWidget {
-  const _ListTabPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text('List tab — coming soon'));
   }
 }
 
