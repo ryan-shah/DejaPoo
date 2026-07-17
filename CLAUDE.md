@@ -177,10 +177,12 @@ a fresh agent can resume with zero conversation context.
 
 1. Verify every exit criterion in `designs/DESIGN.md` with evidence (`flutter analyze`,
    `flutter test`, platform builds — not just "it should work")
-2. Write `designs/PHASE_X_HANDOFF.md` (copy from `designs/templates/PHASE_HANDOFF_TEMPLATE.md`),
+2. **Update `README.md`** to reflect the shipped state (phase status table, features, commands).
+   A phase is NOT exit-complete until the README reflects it; record it as evidence in the handoff
+3. Write `designs/PHASE_X_HANDOFF.md` (copy from `designs/templates/PHASE_HANDOFF_TEMPLATE.md`),
    then delete that phase's `PHASE_X_CURRENT_STATUS.md`
-3. File bd issues for anything deferred; `bd close` the epic's children and the epic
-4. Commit, push, and run the Session Completion checklist above
+4. File bd issues for anything deferred; `bd close` the epic's children and the epic
+5. Commit, push, and run the Session Completion checklist above
 
 ## Conventions & Patterns
 
