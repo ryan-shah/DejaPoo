@@ -184,5 +184,10 @@ a fresh agent can resume with zero conversation context.
 
 ## Conventions & Patterns
 
+- **Before touching Drift code** (tables/migrations, datetime columns, web/WASM support,
+  drift tests, or drift/sqlite3/riverpod version bumps), read
+  `.claude/skills/drift-flutter/SKILL.md` (the `drift-flutter` skill). It encodes Phase 1's
+  hard-won rules — the UTC datetime trap, drift/drift_dev version lockstep, the DB_SMOKE web
+  gate, and why `flutter test --platform chrome` must never be used.
 - Personal reference data (`Alex Bowels.xlsx`, `HuckleberryReference/`) is **local-only and
   gitignored** — never commit it; tests use synthetic fixtures instead.
