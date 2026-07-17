@@ -99,6 +99,74 @@ class _ImportSectionState extends ConsumerState<_ImportSection> {
     );
   }
 
+  void _showFormatHelp() {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Expected file format'),
+        content: const SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'XLSX (recommended)',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: Spacing.xs),
+              Text(
+                'One sheet per year, named with the year (e.g. "2024").\n'
+                'Row 1: title (ignored)\n'
+                'Row 2: headers (ignored)\n'
+                'Row 3+: data rows',
+              ),
+              SizedBox(height: Spacing.sm),
+              Text('Column layout:', style: TextStyle(fontWeight: FontWeight.w500)),
+              SizedBox(height: Spacing.xs),
+              Text(
+                '  A — Month name (ignored)\n'
+                '  B — Date\n'
+                '  C — Type 1 count\n'
+                '  D — Type 2 count\n'
+                '  E — Type 3 count\n'
+                '  F — Type 4 count\n'
+                '  G — Type 5 count\n'
+                '  H — Type 6 count\n'
+                '  I — Type 7 count\n'
+                '  J — Total (optional)',
+              ),
+              SizedBox(height: Spacing.sm),
+              Text(
+                'Blank count cells are treated as 0. Rows without a '
+                'valid date in column B are skipped.',
+              ),
+              SizedBox(height: Spacing.md),
+              Text('CSV', style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: Spacing.xs),
+              Text(
+                'Same column layout as above. One file per year. '
+                'Dates can be ISO (2024-01-15), US (1/15/2024), '
+                'or Excel serial numbers.',
+              ),
+              SizedBox(height: Spacing.md),
+              Text(
+                'Re-importing the same file is safe — duplicate '
+                'entries are automatically skipped.',
+                style: TextStyle(fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -130,6 +198,11 @@ class _ImportSectionState extends ConsumerState<_ImportSection> {
           subtitle: const Text('Import from XLSX or CSV file'),
           enabled: !_loading,
           onTap: _pickAndImport,
+          trailing: IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: 'Expected file format',
+            onPressed: _showFormatHelp,
+          ),
         ),
         const Divider(),
       ],
