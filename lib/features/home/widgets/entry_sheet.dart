@@ -172,18 +172,24 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
     final ColorScheme colors = theme.colorScheme;
     final double bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottomInset),
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: Spacing.md,
-            vertical: Spacing.lg,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
+    return DraggableScrollableSheet(
+      initialChildSize: 0.9,
+      maxChildSize: 0.9,
+      minChildSize: 0.3,
+      expand: false,
+      builder: (BuildContext context, ScrollController scrollController) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: bottomInset),
+          child: SingleChildScrollView(
+            controller: scrollController,
+            padding: const EdgeInsets.symmetric(
+              horizontal: Spacing.md,
+              vertical: Spacing.lg,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
               // Drag handle
               Center(
                 child: Container(
@@ -354,9 +360,10 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
               ),
               const SizedBox(height: Spacing.md),
             ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
