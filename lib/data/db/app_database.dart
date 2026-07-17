@@ -19,7 +19,9 @@ class AppDatabase extends _$AppDatabase {
   /// Android/iOS, WASM SQLite on web via `web/sqlite3.wasm` +
   /// `web/drift_worker.js`). [name] is overridable so the DB_SMOKE probe can
   /// use a throwaway database.
-  AppDatabase.open({String name = 'dejapoo'})
+  AppDatabase.open({
+    String name = const String.fromEnvironment('DB_NAME', defaultValue: 'dejapoo'),
+  })
       : super(
           driftDatabase(
             name: name,
