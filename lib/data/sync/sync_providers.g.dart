@@ -57,7 +57,7 @@ final class SyncServiceNotifierProvider
 }
 
 String _$syncServiceNotifierHash() =>
-    r'20b10913fa78fb3919944f6a072bb2e2edbb62a9';
+    r'2182ed86d895fe240acd43126189a2e2bde26941';
 
 /// The app-wide [SyncService], wired to the real Drive snapshot store
 /// when the user is authorized.
