@@ -1,4 +1,5 @@
 import 'package:dejapoo/data/db/bowel_movements_table.dart';
+import 'package:dejapoo/data/db/sync_state_table.dart';
 import 'package:dejapoo/domain/domain.dart';
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
@@ -10,7 +11,7 @@ part 'app_database.g.dart';
 ///
 /// Use [AppDatabase.open] in the app; tests inject an in-memory
 /// [QueryExecutor] via the default constructor.
-@DriftDatabase(tables: [BowelMovements])
+@DriftDatabase(tables: [BowelMovements, SyncStates])
 class AppDatabase extends _$AppDatabase {
   /// Creates a database on an explicit executor — used by tests.
   AppDatabase(super.e);
@@ -45,10 +46,15 @@ class AppDatabase extends _$AppDatabase {
         );
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (Migrator m) => m.createAll(),
+        onUpgrade: (Migrator m, int from, int to) async {
+          if (from < 2) {
+            await m.createTable(syncStates);
+          }
+        },
       );
 }

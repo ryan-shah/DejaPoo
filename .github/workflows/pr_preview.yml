@@ -23,7 +23,7 @@ jobs:
 
       - run: dart run tool/setup_web.dart
 
-      - run: flutter build web --release --base-href /DejaPoo/pr-${{ github.event.pull_request.number }}/ --dart-define=DEMO_MODE=true --dart-define=DB_NAME=dejapoo_pr${{ github.event.pull_request.number }}
+      - run: flutter build web --release --base-href /DejaPoo/pr-${{ github.event.pull_request.number }}/ --dart-define=DEMO_MODE=true --dart-define=DB_NAME=dejapoo_pr${{ github.event.pull_request.number }} --dart-define=SYNC_ENV=preview
 
       - name: Deploy to gh-pages subfolder
         run: |
