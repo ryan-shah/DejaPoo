@@ -74,6 +74,14 @@ class SyncServiceNotifier extends _$SyncServiceNotifier {
     _debounce = Timer(const Duration(seconds: 5), syncNow);
   }
 
+  /// Deletes the remote snapshot from Drive. Does not affect local data.
+  Future<void> clearSyncedData() async {
+    final service = await _ensureService();
+    if (service == null) return;
+    await service.clearRemote();
+    state = const SyncState(status: SyncStatus.idle);
+  }
+
   /// Tears down the service (e.g. on sign-out) so a new auth client can
   /// be created on next sync.
   void reset() {

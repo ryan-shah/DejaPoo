@@ -44,6 +44,21 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <script src="https://apis.google.com/js/api.js" onload="gapi.load('picker')"></script>
+  <script>
+    function _createAndShowDrivePicker(accessToken, callback) {
+      var docsView = new google.picker.DocsView()
+        .setIncludeFolders(true)
+        .setMimeTypes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv');
+      var picker = new google.picker.PickerBuilder()
+        .addView(docsView)
+        .setOAuthToken(accessToken)
+        .setCallback(callback)
+        .setTitle('Select a spreadsheet to import')
+        .build();
+      picker.setVisible(true);
+    }
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

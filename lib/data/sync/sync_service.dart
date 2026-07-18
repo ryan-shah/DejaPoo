@@ -154,6 +154,12 @@ class SyncService {
     }
   }
 
+  /// Deletes the remote snapshot from Drive.
+  Future<void> clearRemote() async {
+    await _driveStore.deleteSnapshot();
+    await _syncStateRepo.delete(_lastSyncKey);
+  }
+
   /// Loads the persisted lastSyncAt from the database.
   Future<DateTime?> loadLastSyncAt() async {
     final raw = await _syncStateRepo.get(_lastSyncKey);

@@ -1,10 +1,14 @@
 import 'dart:convert';
 
 import 'package:dejapoo/data/auth/google_auth_provider.dart';
+import 'package:dejapoo/data/auth/google_sign_in_button_stub.dart'
+    if (dart.library.js_interop) 'package:dejapoo/data/auth/google_sign_in_button_web.dart';
 import 'package:dejapoo/data/export/export_download_stub.dart'
     if (dart.library.js_interop) 'package:dejapoo/data/export/export_download_web.dart';
 import 'package:dejapoo/data/export/export_providers.dart';
 import 'package:dejapoo/data/fixtures/fixture_generator.dart';
+import 'package:dejapoo/data/import/drive_picker_stub.dart'
+    if (dart.library.js_interop) 'package:dejapoo/data/import/drive_picker_web.dart';
 import 'package:dejapoo/data/import/import_models.dart';
 import 'package:dejapoo/data/providers.dart';
 import 'package:dejapoo/data/sync/sync_providers.dart';
@@ -67,12 +71,21 @@ class _AccountSection extends ConsumerWidget {
           ),
         ),
         if (authStatus == AuthStatus.signedOut)
-          ListTile(
-            leading: const Icon(Icons.login),
-            title: const Text('Sign in with Google'),
-            subtitle: const Text('Enable Google Drive sync'),
-            onTap: () => _handleSignIn(context, authNotifier),
-          ),
+          if (isWebSignIn)
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: Spacing.md,
+                vertical: Spacing.sm,
+              ),
+              child: buildWebSignInButton() ?? const SizedBox.shrink(),
+            )
+          else
+            ListTile(
+              leading: const Icon(Icons.login),
+              title: const Text('Sign in with Google'),
+              subtitle: const Text('Enable Google Drive sync'),
+              onTap: () => _handleSignIn(context, authNotifier),
+            ),
         if (authStatus == AuthStatus.signedIn) ...<Widget>[
           ListTile(
             leading: const Icon(Icons.account_circle),
@@ -223,6 +236,25 @@ class _SyncSection extends ConsumerWidget {
                   ),
             ),
           ),
+        ListTile(
+          leading: const Icon(Icons.delete_outline),
+          title: const Text('Clear synced data'),
+          subtitle: const Text('Remove snapshot from Google Drive'),
+          onTap: () => _handleClearSyncedData(context, ref),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Spacing.md,
+            vertical: Spacing.xs,
+          ),
+          child: Text(
+            'Synced data is stored in a hidden app-specific folder in your '
+            'Google Drive. It does not appear in your regular Drive files.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+        ),
         const Divider(),
       ],
     );
@@ -235,6 +267,46 @@ class _SyncSection extends ConsumerWidget {
       SyncStatus.success => 'Synced',
       SyncStatus.error => 'Sync error',
     };
+  }
+
+  Future<void> _handleClearSyncedData(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear synced data?'),
+        content: const Text(
+          'This will delete the sync snapshot from Google Drive. '
+          'Your local data will not be affected. '
+          'The next sync will re-upload everything.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      await ref.read(syncServiceProvider.notifier).clearSyncedData();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Synced data cleared from Drive')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to clear synced data: $e')),
+        );
+      }
+    }
   }
 
   String _formatSyncTime(DateTime dt) {
@@ -256,6 +328,80 @@ class _ImportSection extends ConsumerStatefulWidget {
 
 class _ImportSectionState extends ConsumerState<_ImportSection> {
   bool _loading = false;
+  bool _driveLoading = false;
+
+  Future<void> _importFromDrive() async {
+    if (!isDrivePickerAvailable) return;
+
+    setState(() => _driveLoading = true);
+    try {
+      final authClient = await ref
+          .read(googleAuthProvider.notifier)
+          .getAuthClient();
+      if (authClient == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Not authorized for Drive access')),
+          );
+        }
+        return;
+      }
+
+      // Extract the access token from the auth client's credentials.
+      final accessToken = authClient.credentials.accessToken.data;
+
+      setState(() => _driveLoading = false);
+
+      final result = await pickFileFromDrive(accessToken: accessToken);
+      if (result == null || !mounted) return;
+
+      setState(() => _driveLoading = true);
+
+      final summary = await ref
+          .read(importServiceProvider)
+          .importBytes(result.bytes, result.fileName);
+
+      if (!mounted) return;
+      final bool failed = summary.insertedCount == 0 && summary.hasErrors;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(failed ? 'Import Failed' : 'Import Complete'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Inserted ${summary.insertedCount} events '
+                  '(${summary.skippedCount} already existed)',
+                ),
+                if (summary.issues.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: Spacing.sm),
+                  ...summary.issues
+                      .map((ImportIssue issue) => Text('• $issue')),
+                ],
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Drive import failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _driveLoading = false);
+    }
+  }
 
   Future<void> _pickAndImport() async {
     final FilePickerResult? result = await FilePicker.pickFiles(
@@ -396,6 +542,8 @@ class _ImportSectionState extends ConsumerState<_ImportSection> {
 
   @override
   Widget build(BuildContext context) {
+    final authStatus = ref.watch(googleAuthProvider);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -431,11 +579,26 @@ class _ImportSectionState extends ConsumerState<_ImportSection> {
             onPressed: _showFormatHelp,
           ),
         ),
+        if (authStatus == AuthStatus.driveAuthorized)
+          ListTile(
+            leading: _driveLoading
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.add_to_drive),
+            title: const Text('Import from Google Drive'),
+            subtitle: const Text('Pick an XLSX or CSV file from Drive'),
+            enabled: !_driveLoading,
+            onTap: _importFromDrive,
+          ),
         const Divider(),
       ],
     );
   }
 }
+
 
 class _ExportSection extends ConsumerStatefulWidget {
   const _ExportSection();

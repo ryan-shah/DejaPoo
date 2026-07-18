@@ -78,6 +78,16 @@ class InMemoryDriveSnapshotStore implements DriveSnapshotStore {
     return _etag!;
   }
 
+  @override
+  Future<void> deleteSnapshot() async {
+    if (forceNetworkFailureOnNextOperation) {
+      forceNetworkFailureOnNextOperation = false;
+      throw const SnapshotNetworkException('Simulated network failure');
+    }
+    _snapshot = null;
+    _etag = null;
+  }
+
   /// Resets the store to its initial empty state.
   void reset() {
     _snapshot = null;

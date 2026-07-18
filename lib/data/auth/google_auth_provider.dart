@@ -20,10 +20,11 @@ enum AuthStatus {
   driveAuthorized,
 }
 
-/// Scopes needed for Drive sync and export upload.
+/// Scopes needed for Drive sync, export upload, and Drive import.
 const List<String> _driveScopes = <String>[
   DriveApi.driveAppdataScope,
   DriveApi.driveFileScope,
+  DriveApi.driveReadonlyScope,
 ];
 
 /// Manages Google sign-in state and provides auth clients for googleapis.

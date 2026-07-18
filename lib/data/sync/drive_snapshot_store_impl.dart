@@ -157,4 +157,20 @@ class DriveSnapshotStoreImpl implements DriveSnapshotStore {
       );
     }
   }
+
+  @override
+  Future<void> deleteSnapshot() async {
+    try {
+      final fileId = _cachedFileId ?? (await _findFile())?.id;
+      if (fileId == null) return;
+
+      await _driveApi.files.delete(fileId);
+      _cachedFileId = null;
+    } on Exception catch (e) {
+      throw SnapshotNetworkException(
+        'Failed to delete snapshot from Drive',
+        cause: e,
+      );
+    }
+  }
 }

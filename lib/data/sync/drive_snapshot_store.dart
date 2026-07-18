@@ -25,4 +25,10 @@ abstract class DriveSnapshotStore {
     Map<String, dynamic> json, {
     String? ifMatch,
   });
+
+  /// Deletes the snapshot from the remote store.
+  ///
+  /// No-op if no snapshot exists. After deletion, [readSnapshot] returns
+  /// `(null, null)`.
+  Future<void> deleteSnapshot();
 }
