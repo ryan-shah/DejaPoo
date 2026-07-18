@@ -176,6 +176,18 @@ class _SyncSection extends ConsumerWidget {
     final AuthStatus authStatus = ref.watch(googleAuthProvider);
     final SyncState syncState = ref.watch(syncServiceProvider);
 
+    ref.listen<SyncState>(syncServiceProvider, (previous, next) {
+      if (next.status == SyncStatus.success &&
+          (next.addedCount > 0 || next.updatedCount > 0)) {
+        final parts = <String>[];
+        if (next.addedCount > 0) parts.add('${next.addedCount} added');
+        if (next.updatedCount > 0) parts.add('${next.updatedCount} updated');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sync complete: ${parts.join(', ')}')),
+        );
+      }
+    });
+
     // Only show when Drive is authorized.
     if (authStatus != AuthStatus.driveAuthorized) {
       return const SizedBox.shrink();

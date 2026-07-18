@@ -17,11 +17,15 @@ class SyncState {
     required this.status,
     this.lastSyncAt,
     this.errorMessage,
+    this.addedCount = 0,
+    this.updatedCount = 0,
   });
 
   final SyncStatus status;
   final DateTime? lastSyncAt;
   final String? errorMessage;
+  final int addedCount;
+  final int updatedCount;
 
   static const SyncState initial = SyncState(status: SyncStatus.idle);
 }
@@ -125,7 +129,12 @@ class SyncService {
       final now = DateTime.now().toUtc();
       await _syncStateRepo.set(_lastSyncKey, now.toIso8601String());
 
-      _emit(SyncState(status: SyncStatus.success, lastSyncAt: now));
+      _emit(SyncState(
+        status: SyncStatus.success,
+        lastSyncAt: now,
+        addedCount: mergeResult.added.length,
+        updatedCount: mergeResult.updated.length,
+      ));
     } on SnapshotConflictException {
       // 9. On conflict, retry once by re-reading.
       if (retryOnConflict) {
