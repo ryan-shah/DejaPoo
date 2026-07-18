@@ -28,6 +28,10 @@ dependencies:
   googleapis_auth: ^2.3.3
   share_plus: ^10.1.4
   http: ^1.2.0
+  flutter_local_notifications: ^19.0.0
+  timezone: ^0.10.0
+  shared_preferences: ^2.3.0
+  permission_handler: ^11.3.0
 
 dev_dependencies:
   flutter_test:
@@ -38,8 +42,31 @@ dev_dependencies:
   drift_dev: 2.34.0
   sqlite3: ^3.4.0
   path: ^1.9.0
+  flutter_launcher_icons: ^0.14.3
+  flutter_native_splash: ^2.4.4
+  image: ^4.3.0
 
 flutter:
   uses-material-design: true
   assets:
     - assets/icons/
+    - assets/icon/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#6FAE8D"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  web:
+    generate: true
+    image_path: "assets/icon/app_icon.png"
+
+flutter_native_splash:
+  color: "#FAFAF7"
+  image: "assets/icon/app_icon.png"
+  android_12:
+    color: "#FAFAF7"
+    icon_background_color: "#6FAE8D"
+    image: "assets/icon/app_icon.png"
