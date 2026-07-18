@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:dejapoo/data/providers.dart';
+import 'package:dejapoo/data/sync/sync_providers.dart';
 import 'package:dejapoo/domain/domain.dart';
 import 'package:dejapoo/features/home/providers/timeline_providers.dart';
 import 'package:dejapoo/features/home/widgets/entry_sheet.dart';
@@ -170,6 +171,7 @@ Future<void> _quickLog(BuildContext context, WidgetRef ref) async {
   final BowelMovementRepository repo =
       ref.read(bowelMovementRepositoryProvider);
   await repo.create(occurredAt: DateTime.now(), bristolType: type);
+  ref.read(syncServiceProvider.notifier).scheduleDebouncedSync();
 
   if (!context.mounted) return;
   ScaffoldMessenger.of(context)
@@ -307,7 +309,10 @@ class _DismissibleEntryTile extends StatelessWidget {
         final BowelMovement deletedEntry = entry;
         final BowelMovementRepository repo =
             ref.read(bowelMovementRepositoryProvider);
+        final SyncServiceNotifier syncNotifier =
+            ref.read(syncServiceProvider.notifier);
         repo.softDelete(entry.id);
+        syncNotifier.scheduleDebouncedSync();
 
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
@@ -318,6 +323,7 @@ class _DismissibleEntryTile extends StatelessWidget {
                 label: 'Undo',
                 onPressed: () {
                   repo.update(deletedEntry);
+                  syncNotifier.scheduleDebouncedSync();
                 },
               ),
             ),

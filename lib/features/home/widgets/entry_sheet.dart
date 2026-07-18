@@ -1,4 +1,5 @@
 import 'package:dejapoo/data/providers.dart';
+import 'package:dejapoo/data/sync/sync_providers.dart';
 import 'package:dejapoo/domain/domain.dart';
 import 'package:dejapoo/ui/theme/tokens.dart';
 import 'package:dejapoo/ui/widgets/bristol_icon.dart';
@@ -154,6 +155,7 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
           note: noteText,
         );
       }
+      ref.read(syncServiceProvider.notifier).scheduleDebouncedSync();
       if (mounted) {
         Navigator.of(context).pop();
       }
