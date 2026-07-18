@@ -8,6 +8,7 @@ import 'package:dejapoo/ui/theme/theme.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 const bool _demoMode = bool.fromEnvironment('DEMO_MODE');
 
@@ -158,6 +159,14 @@ class _ImportSectionState extends ConsumerState<_ImportSection> {
           ),
         ),
         actions: <Widget>[
+          TextButton(
+            onPressed: () => launchUrl(
+              Uri.parse(
+                'https://ryan-shah.github.io/DejaPoo/sample_import.csv',
+              ),
+            ),
+            child: const Text('Download sample CSV'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Got it'),
