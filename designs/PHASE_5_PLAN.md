@@ -95,6 +95,25 @@ flutter run -d chrome --dart-define=DB_SMOKE=true   # expect "DB_SMOKE OK"
 Manual gates (require the user / real Google account — schedule at .8, surface clearly):
 sign-in + sync on Chrome and Android emulator; export→re-import shows 0 inserted.
 
+## Manual user-side OAuth setup (Console steps — cannot be automated)
+
+Required before the real-account gates at `dp-l4h.8`; code work is never blocked on this
+(the app degrades gracefully until configured). `dp-l4h.4` writes the detailed
+`designs/GOOGLE_OAUTH_SETUP.md`; the short version:
+
+1. Create a Google Cloud project; enable the **Google Drive API**
+2. OAuth consent screen: External, add the user's Gmail as a **test user**, scopes
+   `drive.appdata` + `drive.file`; stay in **Testing** mode (personal use — no Google
+   verification review needed; `drive.appdata` only triggers review if published)
+3. **Android client ID**: applicationId + debug-keystore SHA-1 (`gradlew signingReport`);
+   add the release-keystore SHA-1 before signed builds. Matched at runtime — nothing in code
+4. **Web client ID**: Authorized JavaScript origins `http://localhost:5000` (pin dev runs
+   with `flutter run -d chrome --web-port 5000`) and `https://ryan-shah.github.io`
+   (origins are host-only, so this covers `/DejaPoo/`); client ID goes in a
+   `web/index.html` meta tag
+5. **iOS client ID**: bundle ID + reversed-client-ID URL scheme in Info.plist —
+   documented only, unverifiable on the Windows dev machine
+
 ## Risks & watch-items
 
 | Risk | Mitigation |
