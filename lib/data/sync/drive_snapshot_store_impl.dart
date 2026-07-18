@@ -16,7 +16,10 @@ class DriveSnapshotStoreImpl implements DriveSnapshotStore {
 
   final http.Client _client;
 
-  static const _fileName = 'dejapoo_snapshot.json';
+  static const _syncEnv = String.fromEnvironment('SYNC_ENV');
+  static final _fileName = _syncEnv.isEmpty
+      ? 'dejapoo_snapshot.json'
+      : 'dejapoo_snapshot_$_syncEnv.json';
   static const _appDataFolder = 'appDataFolder';
 
   String? _cachedFileId;
