@@ -18,7 +18,7 @@ design document and phase breakdown.
 | 2 | Logging UX: home timeline, add/edit bottom sheet, quick-log | ✅ Done |
 | 3 | Metrics & reports (stat tiles, charts, range selector) | ✅ Done |
 | 4 | Historical spreadsheet import (XLSX/CSV) | ✅ Done |
-| 5 | Google Drive sync & export | Planned |
+| 5 | Google Drive sync & export | ✅ Done |
 | 6 | Polish & release readiness | Planned |
 
 ## Features (so far)
@@ -37,11 +37,17 @@ design document and phase breakdown.
 - **Historical import** — import from XLSX or CSV spreadsheets (Google Sheets year-sheet layout);
   expands daily per-type counts into individual events, idempotent on re-import; accessible from
   Settings on all platforms including web
+- **Google Drive sync** — sign in with Google, authorize Drive scope, then sync via a JSON
+  snapshot in Drive's appDataFolder; LWW merge on `updatedAt` handles concurrent edits across
+  devices; manual "Sync now" plus auto-sync on app open when authorized
+- **Export** — export all entries as XLSX (year-based sheets matching the import layout) or CSV;
+  web uses browser download, mobile uses the native share sheet
 - **Persistent local storage** — Drift/SQLite on native, WASM sqlite on web; soft-delete
-  tombstones for future sync
+  tombstones for sync
 
 ## Stack
 
+- **google_sign_in** + **googleapis** for Google Drive sync/export
 - **Flutter** (Android / iOS / web) with **Riverpod** for state management
 - **Drift** (SQLite) for local storage — native `sqlite3` on mobile, WASM on web
 - **go_router** for navigation, **fl_chart** (Phase 3+) for charts
@@ -77,6 +83,12 @@ flutter build web --release --base-href /DejaPoo/   # GitHub Pages
 flutter build apk --release
 flutter build appbundle --release
 ```
+
+### Google OAuth setup
+
+Google Drive sync requires a Google Cloud OAuth client configured per platform. See
+[`designs/GOOGLE_OAUTH_SETUP.md`](designs/GOOGLE_OAUTH_SETUP.md) for step-by-step instructions
+for Android, Web, and iOS.
 
 ## Project structure
 
