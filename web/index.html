@@ -44,6 +44,22 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <script>
+    // Register COI service worker for OPFS support on GitHub Pages
+    // (GitHub Pages cannot send COOP/COEP headers, so drift's sqlite3 WASM would
+    // otherwise fall back to IndexedDB forever). This MUST run and reload the
+    // page BEFORE the app boots: if the app boots pre-reload, drift creates its
+    // database in IndexedDB and keeps using it even after OPFS becomes available.
+    if ('serviceWorker' in navigator) {
+      if (!navigator.serviceWorker.controller) {
+        navigator.serviceWorker.register('coi_serviceworker.js').then(function () {
+          window.location.reload();
+        });
+        // Prevent flutter_bootstrap.js below from running before the reload.
+        throw new Error('Reloading for COI service worker');
+      }
+    }
+  </script>
   <script src="https://apis.google.com/js/api.js" onload="gapi.load('picker')"></script>
   <script>
     function _createAndShowDrivePicker(accessToken, callback) {
