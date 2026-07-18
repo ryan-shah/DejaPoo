@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:dejapoo/data/auth/google_auth_provider.dart';
 import 'package:dejapoo/data/fixtures/fixture_generator.dart';
 import 'package:dejapoo/data/import/import_models.dart';
 import 'package:dejapoo/data/providers.dart';
@@ -8,6 +9,7 @@ import 'package:dejapoo/ui/theme/theme.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const bool _demoMode = bool.fromEnvironment('DEMO_MODE');
@@ -21,11 +23,126 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: const <Widget>[
+          _AccountSection(),
           _ImportSection(),
           if (_demoMode) _DemoDataSection(),
         ],
       ),
     );
+  }
+}
+
+class _AccountSection extends ConsumerWidget {
+  const _AccountSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AuthStatus authStatus = ref.watch(googleAuthProvider);
+    final GoogleAuth authNotifier = ref.read(googleAuthProvider.notifier);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.md,
+            Spacing.md,
+            Spacing.md,
+            Spacing.xs,
+          ),
+          child: Text(
+            'Account',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+          ),
+        ),
+        if (authStatus == AuthStatus.signedOut)
+          ListTile(
+            leading: const Icon(Icons.login),
+            title: const Text('Sign in with Google'),
+            subtitle: const Text('Enable Google Drive sync'),
+            onTap: () => _handleSignIn(context, authNotifier),
+          ),
+        if (authStatus == AuthStatus.signedIn) ...<Widget>[
+          ListTile(
+            leading: const Icon(Icons.account_circle),
+            title: Text(authNotifier.currentUserEmail ?? 'Signed in'),
+            subtitle: const Text('Drive sync not yet authorized'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.cloud),
+            title: const Text('Authorize Drive sync'),
+            subtitle: const Text('Allow app to sync via Google Drive'),
+            onTap: () => _handleAuthorizeDrive(context, authNotifier),
+          ),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Sign out'),
+            onTap: authNotifier.signOut,
+          ),
+        ],
+        if (authStatus == AuthStatus.driveAuthorized) ...<Widget>[
+          ListTile(
+            leading: const Icon(Icons.account_circle),
+            title: Text(authNotifier.currentUserEmail ?? 'Signed in'),
+            subtitle: const Text('Drive sync authorized'),
+            trailing: Icon(
+              Icons.check_circle,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Sign out'),
+            onTap: authNotifier.signOut,
+          ),
+        ],
+        const Divider(),
+      ],
+    );
+  }
+
+  Future<void> _handleSignIn(
+    BuildContext context,
+    GoogleAuth authNotifier,
+  ) async {
+    try {
+      await authNotifier.signIn();
+    } on GoogleSignInException catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sign-in failed: ${e.code}')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sign-in failed: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleAuthorizeDrive(
+    BuildContext context,
+    GoogleAuth authNotifier,
+  ) async {
+    try {
+      await authNotifier.authorizeDriveScope();
+    } on GoogleSignInException catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Authorization failed: ${e.code}')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Authorization failed: $e')),
+        );
+      }
+    }
   }
 }
 
