@@ -1,15 +1,22 @@
-import 'dart:typed_data';
+import 'dart:convert';
 
 import 'package:dejapoo/data/auth/google_auth_provider.dart';
+import 'package:dejapoo/data/export/export_download_stub.dart'
+    if (dart.library.js_interop) 'package:dejapoo/data/export/export_download_web.dart';
+import 'package:dejapoo/data/export/export_providers.dart';
 import 'package:dejapoo/data/fixtures/fixture_generator.dart';
 import 'package:dejapoo/data/import/import_models.dart';
 import 'package:dejapoo/data/providers.dart';
+import 'package:dejapoo/data/sync/sync_providers.dart';
+import 'package:dejapoo/data/sync/sync_service.dart';
 import 'package:dejapoo/domain/domain.dart';
 import 'package:dejapoo/ui/theme/theme.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const bool _demoMode = bool.fromEnvironment('DEMO_MODE');
@@ -24,7 +31,9 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         children: const <Widget>[
           _AccountSection(),
+          _SyncSection(),
           _ImportSection(),
+          _ExportSection(),
           if (_demoMode) _DemoDataSection(),
         ],
       ),
@@ -143,6 +152,98 @@ class _AccountSection extends ConsumerWidget {
         );
       }
     }
+  }
+}
+
+class _SyncSection extends ConsumerWidget {
+  const _SyncSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AuthStatus authStatus = ref.watch(googleAuthProvider);
+    final SyncState syncState = ref.watch(syncServiceProvider);
+
+    // Only show when Drive is authorized.
+    if (authStatus != AuthStatus.driveAuthorized) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.md,
+            Spacing.md,
+            Spacing.md,
+            Spacing.xs,
+          ),
+          child: Text(
+            'Sync',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+          ),
+        ),
+        ListTile(
+          leading: syncState.status == SyncStatus.syncing
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(
+                  syncState.status == SyncStatus.error
+                      ? Icons.sync_problem
+                      : Icons.sync,
+                ),
+          title: Text(_syncStatusLabel(syncState)),
+          subtitle: syncState.lastSyncAt != null
+              ? Text('Last synced: ${_formatSyncTime(syncState.lastSyncAt!)}')
+              : null,
+          trailing: syncState.status == SyncStatus.error
+              ? TextButton(
+                  onPressed: () =>
+                      ref.read(syncServiceProvider.notifier).syncNow(),
+                  child: const Text('Retry'),
+                )
+              : null,
+          onTap: syncState.status != SyncStatus.syncing
+              ? () => ref.read(syncServiceProvider.notifier).syncNow()
+              : null,
+        ),
+        if (syncState.status == SyncStatus.error &&
+            syncState.errorMessage != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+            child: Text(
+              syncState.errorMessage!,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+            ),
+          ),
+        const Divider(),
+      ],
+    );
+  }
+
+  String _syncStatusLabel(SyncState state) {
+    return switch (state.status) {
+      SyncStatus.idle => 'Sync with Google Drive',
+      SyncStatus.syncing => 'Syncing…',
+      SyncStatus.success => 'Synced',
+      SyncStatus.error => 'Sync error',
+    };
+  }
+
+  String _formatSyncTime(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${dt.month}/${dt.day} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
   }
 }
 
@@ -329,6 +430,121 @@ class _ImportSectionState extends ConsumerState<_ImportSection> {
             tooltip: 'Expected file format',
             onPressed: _showFormatHelp,
           ),
+        ),
+        const Divider(),
+      ],
+    );
+  }
+}
+
+class _ExportSection extends ConsumerStatefulWidget {
+  const _ExportSection();
+
+  @override
+  ConsumerState<_ExportSection> createState() => _ExportSectionState();
+}
+
+class _ExportSectionState extends ConsumerState<_ExportSection> {
+  bool _loading = false;
+
+  Future<void> _exportXlsx() async {
+    setState(() => _loading = true);
+    try {
+      final Uint8List bytes =
+          await ref.read(exportServiceProvider).exportXlsx();
+      if (!mounted) return;
+      await _deliverFile(
+        bytes,
+        'dejapoo_export.xlsx',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _exportCsv() async {
+    setState(() => _loading = true);
+    try {
+      final String csv = await ref.read(exportServiceProvider).exportCsv();
+      if (!mounted) return;
+      final Uint8List bytes = Uint8List.fromList(utf8.encode(csv));
+      await _deliverFile(bytes, 'dejapoo_export.csv', 'text/csv');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _deliverFile(
+    Uint8List bytes,
+    String fileName,
+    String mimeType,
+  ) async {
+    if (kIsWeb) {
+      downloadFile(bytes, fileName, mimeType);
+    } else {
+      await Share.shareXFiles(
+        <XFile>[XFile.fromData(bytes, name: fileName, mimeType: mimeType)],
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.md,
+            Spacing.md,
+            Spacing.md,
+            Spacing.xs,
+          ),
+          child: Text(
+            'Export',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+          ),
+        ),
+        ListTile(
+          leading: _loading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.table_chart),
+          title: const Text('Export as XLSX'),
+          subtitle: const Text('Spreadsheet with year-based sheets'),
+          enabled: !_loading,
+          onTap: _exportXlsx,
+        ),
+        ListTile(
+          leading: _loading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.description),
+          title: const Text('Export as CSV'),
+          subtitle: const Text('Flat comma-separated file'),
+          enabled: !_loading,
+          onTap: _exportCsv,
         ),
         const Divider(),
       ],
