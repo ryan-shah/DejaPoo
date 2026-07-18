@@ -17,7 +17,7 @@ design document and phase breakdown.
 | 1 | Data layer: Drift (SQLite) schema, repositories, aggregation queries, WASM web DB | ✅ Done |
 | 2 | Logging UX: home timeline, add/edit bottom sheet, quick-log | ✅ Done |
 | 3 | Metrics & reports (stat tiles, charts, range selector) | ✅ Done |
-| 4 | Historical spreadsheet import (XLSX/CSV) | Planned |
+| 4 | Historical spreadsheet import (XLSX/CSV) | ✅ Done |
 | 5 | Google Drive sync & export | Planned |
 | 6 | Polish & release readiness | Planned |
 
@@ -34,6 +34,9 @@ design document and phase breakdown.
   stepping; Summary tab with stat tiles (total, avg/day, most common type, % healthy, longest
   gap), stacked bar chart by Bristol type, and type-distribution donut; List tab with
   multi-select Bristol type filter chips; all stats update live when entries are logged/edited
+- **Historical import** — import from XLSX or CSV spreadsheets (Google Sheets year-sheet layout);
+  expands daily per-type counts into individual events, idempotent on re-import; accessible from
+  Settings on all platforms including web
 - **Persistent local storage** — Drift/SQLite on native, WASM sqlite on web; soft-delete
   tombstones for future sync
 

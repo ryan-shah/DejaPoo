@@ -26,6 +26,11 @@ abstract class BowelMovementRepository {
   /// Bulk-inserts fully formed entities (fixture seeding, historical import).
   Future<void> insertAll(List<BowelMovement> movements);
 
+  /// Bulk-inserts movements, skipping any whose id already exists (including
+  /// soft-deleted rows — we must not resurrect them). Returns the number of
+  /// rows actually inserted.
+  Future<int> insertAllIfAbsent(List<BowelMovement> movements);
+
   /// Persists changes to an existing movement, bumping `updatedAt`.
   /// Returns the stored entity.
   Future<BowelMovement> update(BowelMovement movement);

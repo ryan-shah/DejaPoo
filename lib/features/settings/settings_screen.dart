@@ -1,9 +1,14 @@
+import 'dart:typed_data';
+
 import 'package:dejapoo/data/fixtures/fixture_generator.dart';
+import 'package:dejapoo/data/import/import_models.dart';
 import 'package:dejapoo/data/providers.dart';
 import 'package:dejapoo/domain/domain.dart';
 import 'package:dejapoo/ui/theme/theme.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 const bool _demoMode = bool.fromEnvironment('DEMO_MODE');
 
@@ -16,9 +21,200 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: const <Widget>[
+          _ImportSection(),
           if (_demoMode) _DemoDataSection(),
         ],
       ),
+    );
+  }
+}
+
+class _ImportSection extends ConsumerStatefulWidget {
+  const _ImportSection();
+
+  @override
+  ConsumerState<_ImportSection> createState() => _ImportSectionState();
+}
+
+class _ImportSectionState extends ConsumerState<_ImportSection> {
+  bool _loading = false;
+
+  Future<void> _pickAndImport() async {
+    final FilePickerResult? result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: <String>['xlsx', 'csv'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) {
+      return;
+    }
+    final PlatformFile file = result.files.single;
+    final Uint8List? bytes = file.bytes;
+    if (bytes == null) {
+      return;
+    }
+
+    setState(() => _loading = true);
+    ImportSummary summary;
+    try {
+      summary = await ref
+          .read(importServiceProvider)
+          .importBytes(bytes, file.name);
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
+
+    if (!mounted) {
+      return;
+    }
+    final bool failed = summary.insertedCount == 0 && summary.hasErrors;
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: Text(failed ? 'Import Failed' : 'Import Complete'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'Inserted ${summary.insertedCount} events '
+                '(${summary.skippedCount} already existed)',
+              ),
+              if (summary.issues.isNotEmpty) ...<Widget>[
+                const SizedBox(height: Spacing.sm),
+                ...summary.issues.map((ImportIssue issue) => Text('• $issue')),
+              ],
+            ],
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFormatHelp() {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Expected file format'),
+        content: const SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'XLSX (recommended)',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: Spacing.xs),
+              Text(
+                'One sheet per year, named with the year (e.g. "2024").\n'
+                'Row 1: title (ignored)\n'
+                'Row 2: headers (ignored)\n'
+                'Row 3+: data rows',
+              ),
+              SizedBox(height: Spacing.sm),
+              Text('Column layout:', style: TextStyle(fontWeight: FontWeight.w500)),
+              SizedBox(height: Spacing.xs),
+              Text(
+                '  A — Month name (ignored)\n'
+                '  B — Date\n'
+                '  C — Type 1 count\n'
+                '  D — Type 2 count\n'
+                '  E — Type 3 count\n'
+                '  F — Type 4 count\n'
+                '  G — Type 5 count\n'
+                '  H — Type 6 count\n'
+                '  I — Type 7 count\n'
+                '  J — Total (optional)',
+              ),
+              SizedBox(height: Spacing.sm),
+              Text(
+                'Blank count cells are treated as 0. Rows without a '
+                'valid date in column B are skipped.',
+              ),
+              SizedBox(height: Spacing.md),
+              Text('CSV', style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: Spacing.xs),
+              Text(
+                'Same column layout as above. One file per year. '
+                'Dates can be ISO (2024-01-15), US (1/15/2024), '
+                'or Excel serial numbers.',
+              ),
+              SizedBox(height: Spacing.md),
+              Text(
+                'Re-importing the same file is safe — duplicate '
+                'entries are automatically skipped.',
+                style: TextStyle(fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => launchUrl(
+              Uri.parse(
+                'https://ryan-shah.github.io/DejaPoo/sample_import.csv',
+              ),
+            ),
+            child: const Text('Download sample CSV'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.md,
+            Spacing.md,
+            Spacing.md,
+            Spacing.xs,
+          ),
+          child: Text(
+            'Import',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+          ),
+        ),
+        ListTile(
+          leading: _loading
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.upload_file),
+          title: const Text('Import spreadsheet'),
+          subtitle: const Text('Import from XLSX or CSV file'),
+          enabled: !_loading,
+          onTap: _pickAndImport,
+          trailing: IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: 'Expected file format',
+            onPressed: _showFormatHelp,
+          ),
+        ),
+        const Divider(),
+      ],
     );
   }
 }

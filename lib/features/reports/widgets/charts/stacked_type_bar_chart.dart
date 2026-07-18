@@ -23,6 +23,21 @@ class StackedTypeBarChart extends StatelessWidget {
   /// order matching the sorted period starts found in [buckets]).
   final List<String> periodLabels;
 
+  static double _barWidth(int barCount) {
+    if (barCount <= 7) return 18;
+    if (barCount <= 14) return 12;
+    if (barCount <= 31) return 8;
+    return 4;
+  }
+
+  static int _labelInterval(int barCount) {
+    if (barCount <= 10) return 1;
+    if (barCount <= 20) return 2;
+    if (barCount <= 40) return 5;
+    if (barCount <= 60) return 10;
+    return (barCount / 6).ceil();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (buckets.isEmpty) {
@@ -76,13 +91,15 @@ class StackedTypeBarChart extends StatelessWidget {
             BarChartRodData(
               toY: cumulative,
               rodStackItems: stackItems,
-              width: 18,
+              width: _barWidth(periodStarts.length),
               borderRadius: BorderRadius.circular(Radii.sm / 2),
             ),
           ],
         ),
       );
     }
+
+    final int labelInterval = _labelInterval(periodStarts.length);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -121,9 +138,13 @@ class StackedTypeBarChart extends StatelessWidget {
                   sideTitles: SideTitles(
                     showTitles: true,
                     reservedSize: 28,
+                    interval: 1,
                     getTitlesWidget: (double value, TitleMeta meta) {
                       final int index = value.toInt();
                       if (index < 0 || index >= periodLabels.length) {
+                        return const SizedBox.shrink();
+                      }
+                      if (index % labelInterval != 0) {
                         return const SizedBox.shrink();
                       }
                       return Padding(

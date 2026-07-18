@@ -201,4 +201,99 @@ void main() {
       expect(range.first.id, 'fixture-4');
     });
   });
+
+  group('insertAllIfAbsent', () {
+    BowelMovement makeMovement(String id, {DateTime? occurredAt}) {
+      final DateTime created = DateTime.utc(2024, 1, 1);
+      return BowelMovement(
+        id: id,
+        occurredAt: occurredAt ?? DateTime(2024, 1, 1, 12),
+        dateOnly: true,
+        bristolType: BristolType.type4,
+        createdAt: created,
+        updatedAt: created,
+      );
+    }
+
+    test('inserts new movements and returns count', () async {
+      final List<BowelMovement> movements = <BowelMovement>[
+        makeMovement('a'),
+        makeMovement('b'),
+        makeMovement('c'),
+      ];
+
+      final int inserted = await repo.insertAllIfAbsent(movements);
+
+      expect(inserted, 3);
+      expect(await repo.getById('a'), isNotNull);
+      expect(await repo.getById('b'), isNotNull);
+      expect(await repo.getById('c'), isNotNull);
+    });
+
+    test('skips duplicates', () async {
+      final List<BowelMovement> movements = <BowelMovement>[
+        makeMovement('a'),
+        makeMovement('b'),
+        makeMovement('c'),
+      ];
+      await repo.insertAllIfAbsent(movements);
+
+      final int inserted = await repo.insertAllIfAbsent(movements);
+
+      expect(inserted, 0);
+    });
+
+    test('mixed new and existing only inserts the new ones', () async {
+      await repo.insertAllIfAbsent(<BowelMovement>[
+        makeMovement('a'),
+        makeMovement('b'),
+        makeMovement('c'),
+      ]);
+
+      final int inserted = await repo.insertAllIfAbsent(<BowelMovement>[
+        makeMovement('a'),
+        makeMovement('b'),
+        makeMovement('c'),
+        makeMovement('d'),
+        makeMovement('e'),
+      ]);
+
+      expect(inserted, 2);
+      expect(await repo.getById('d'), isNotNull);
+      expect(await repo.getById('e'), isNotNull);
+    });
+
+    test('does not resurrect soft-deleted rows', () async {
+      await repo.insertAllIfAbsent(<BowelMovement>[makeMovement('a')]);
+      await repo.softDelete('a');
+
+      final int inserted = await repo.insertAllIfAbsent(
+        <BowelMovement>[makeMovement('a')],
+      );
+
+      expect(inserted, 0);
+      expect(await repo.getById('a'), isNull);
+      final BowelMovement raw = await (db.select(db.bowelMovements)
+            ..where(($BowelMovementsTable t) => t.id.equals('a')))
+          .getSingle();
+      expect(raw.deletedAt, isNotNull);
+    });
+
+    test('chunks lookups past the 500-variable limit', () async {
+      final List<BowelMovement> movements = <BowelMovement>[
+        for (int i = 0; i < 501; i++) makeMovement('bulk-$i'),
+      ];
+
+      final int inserted = await repo.insertAllIfAbsent(movements);
+
+      expect(inserted, 501);
+
+      final int reinserted = await repo.insertAllIfAbsent(movements);
+      expect(reinserted, 0);
+    });
+
+    test('empty list returns 0', () async {
+      expect(await repo.insertAllIfAbsent(<BowelMovement>[]), 0);
+    });
+  });
 }
