@@ -87,4 +87,14 @@ abstract class BowelMovementRepository {
 
   /// Hard-deletes every row in the table (demo/fixture teardown only).
   Future<void> deleteAll();
+
+  /// All movements including soft-deleted ones (for sync snapshot
+  /// generation).
+  Future<List<BowelMovement>> getAllIncludingDeleted();
+
+  /// Upserts movements verbatim (no updatedAt bump). Used by sync to apply
+  /// merge results — can overwrite existing rows including soft-deleted
+  /// rows, and can resurrect or tombstone rows depending on the incoming
+  /// data's `deletedAt`.
+  Future<void> applyRemote(List<BowelMovement> movements);
 }
