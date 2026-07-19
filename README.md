@@ -13,15 +13,15 @@ design document and phase breakdown.
 
 | Phase | Scope | Status |
 |---|---|---|
-| 0 | Scaffold, theme system, navigation shell, Bristol type icons | ✅ Done |
-| 1 | Data layer: Drift (SQLite) schema, repositories, aggregation queries, WASM web DB | ✅ Done |
-| 2 | Logging UX: home timeline, add/edit bottom sheet, quick-log | ✅ Done |
-| 3 | Metrics & reports (stat tiles, charts, range selector) | ✅ Done |
-| 4 | Historical spreadsheet import (XLSX/CSV) | ✅ Done |
-| 5 | Google Drive sync & export | ✅ Done |
-| 6 | Polish & release readiness | Planned |
+| 0 | Scaffold, theme system, navigation shell, Bristol type icons | Done |
+| 1 | Data layer: Drift (SQLite) schema, repositories, aggregation queries, WASM web DB | Done |
+| 2 | Logging UX: home timeline, add/edit bottom sheet, quick-log | Done |
+| 3 | Metrics & reports (stat tiles, charts, range selector) | Done |
+| 4 | Historical spreadsheet import (XLSX/CSV) | Done |
+| 5 | Google Drive sync & export | Done |
+| 6 | Polish & release readiness | Done |
 
-## Features (so far)
+## Features
 
 - **Home timeline** — today-at-a-glance header with count + most-recent type, reverse-chron
   entries grouped by calendar day
@@ -39,9 +39,19 @@ design document and phase breakdown.
   Settings on all platforms including web
 - **Google Drive sync** — sign in with Google, authorize Drive scope, then sync via a JSON
   snapshot in Drive's appDataFolder; LWW merge on `updatedAt` handles concurrent edits across
-  devices; manual "Sync now" plus auto-sync on app open when authorized
+  devices; manual "Sync now" plus auto-sync on app open and debounced sync after every local
+  mutation when authorized
 - **Export** — export all entries as XLSX (year-based sheets matching the import layout) or CSV;
   web uses browser download, mobile uses the native share sheet
+- **Daily reminders** — optional local notification at a user-chosen time ("Log today's movements"),
+  with Android 13+ permission handling; hidden on web
+- **Responsive layout** — NavigationRail at 840dp+ for tablets/desktop, NavigationBar on phone
+- **Accessibility** — Bristol type icons announce type + description + selection state; charts
+  provide text summaries for screen readers; all screens have designed error/retry and empty states
+- **App identity** — branded launcher icon (sage palette), native splash screen, PWA manifest
+  with correct name/colors/description
+- **Cross-origin isolation** — COI service worker enables OPFS storage for the web build on
+  GitHub Pages (without it drift falls back to IndexedDB permanently)
 - **Persistent local storage** — Drift/SQLite on native, WASM sqlite on web; soft-delete
   tombstones for sync
 
@@ -51,7 +61,8 @@ design document and phase breakdown.
 - **Flutter** (Android / iOS / web) with **Riverpod** for state management
 - **Drift** (SQLite) for local storage — native `sqlite3` on mobile, WASM on web
 - **go_router** for navigation, **fl_chart** (Phase 3+) for charts
-- Custom SVG icon set for Bristol types 1–7
+- **flutter_local_notifications** + **timezone** for daily reminders
+- Custom SVG icon set for Bristol types 1-7
 
 ## Getting started
 
@@ -79,7 +90,7 @@ flutter run -d chrome --dart-define=DB_SMOKE=true
 ### Release builds
 
 ```bash
-flutter build web --release --base-href /DejaPoo/   # GitHub Pages
+flutter build web --release --base-href /DejaPoo/   # GitHub Pages (PowerShell only)
 flutter build apk --release
 flutter build appbundle --release
 ```
