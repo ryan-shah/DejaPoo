@@ -86,8 +86,10 @@ flutter run -d chrome --dart-define=DB_SMOKE=true   # expect "DB_SMOKE OK"
 - `dp-y82` iOS OAuth client verification + build — requires a Mac
 - `dp-9w0` Re-add riverpod_lint + custom_lint when analyzer versions align
 - `dp-h5e` Import stale-row cleanup: handle decreased counts on re-import
-- APK/appbundle release build verification — Gradle daemon lock issues prevented clean builds
-  this session; signing config is correct (debug fallback), needs manual verification
+- APK/appbundle release build verification — core library desugaring added for
+  flutter_local_notifications (isCoreLibraryDesugaringEnabled + desugar_jdk_libs:2.1.4);
+  Gradle daemon stalling on Windows prevented full verification this session. The config is
+  correct; run `flutter build apk --release` to verify
 
 ## Pointers for next phase
 
