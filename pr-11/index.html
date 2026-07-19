@@ -120,17 +120,31 @@
     // falls back to IndexedDB. This SW intercepts fetches and adds the headers.
     // CRITICAL: the page MUST reload after the SW takes control and BEFORE the
     // app boots — otherwise drift creates its DB in IndexedDB permanently.
-    if ('serviceWorker' in navigator && !window.crossOriginIsolated) {
+    //
+    // Guard against infinite reload: sessionStorage flag ensures at most one
+    // reload per tab session regardless of controller/crossOriginIsolated state
+    // (the COOP browsing-context-group switch can reset those between reloads).
+    if ('serviceWorker' in navigator && !window.crossOriginIsolated
+        && !sessionStorage.getItem('coi-sw-registered')) {
       if (!navigator.serviceWorker.controller) {
-        // Register and wait for the SW to actually claim this client
-        // (controllerchange fires after install → skipWaiting → activate →
-        // clients.claim). Only then reload — avoids an infinite loop where
-        // controller is still null immediately after register().
-        navigator.serviceWorker.register('coi_serviceworker.js');
-        navigator.serviceWorker.addEventListener('controllerchange', function () {
-          window.location.reload();
-        });
-        // Block app boot until the reload fires.
+        sessionStorage.setItem('coi-sw-registered', '1');
+        navigator.serviceWorker.register('coi_serviceworker.js').then(
+          function (reg) {
+            // Wait for the SW to activate and claim before reloading.
+            if (reg.active) {
+              window.location.reload();
+            } else {
+              var sw = reg.installing || reg.waiting;
+              if (sw) {
+                sw.addEventListener('statechange', function () {
+                  if (sw.state === 'activated') window.location.reload();
+                });
+              }
+            }
+          },
+          function () { /* registration failed — proceed without COI */ }
+        );
+        // Block app boot until the reload fires above.
         throw new Error('Waiting for COI service worker activation');
       }
     }
