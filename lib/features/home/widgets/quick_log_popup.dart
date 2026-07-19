@@ -52,7 +52,8 @@ class _QuickLogPopup extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: BristolType.values.map((BristolType type) {
                     return Semantics(
-                      label: 'Log Bristol type ${type.number}',
+                      label:
+                          'Log Bristol type ${type.number}: ${type.label}',
                       excludeSemantics: true,
                       child: InkWell(
                         borderRadius: BorderRadius.circular(Radii.sm),

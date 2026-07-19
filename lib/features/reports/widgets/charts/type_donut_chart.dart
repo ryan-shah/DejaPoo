@@ -46,13 +46,17 @@ class TypeDonutChart extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        SizedBox(
-          height: 220,
-          child: PieChart(
-            PieChartData(
-              sections: sections,
-              centerSpaceRadius: 48,
-              sectionsSpace: 2,
+        Semantics(
+          label: _summaryLabel(total),
+          excludeSemantics: true,
+          child: SizedBox(
+            height: 220,
+            child: PieChart(
+              PieChartData(
+                sections: sections,
+                centerSpaceRadius: 48,
+                sectionsSpace: 2,
+              ),
             ),
           ),
         ),
@@ -60,6 +64,24 @@ class TypeDonutChart extends StatelessWidget {
         _Legend(distribution: distribution, brightness: brightness),
       ],
     );
+  }
+
+  /// Builds a screen-reader summary of the distribution, e.g.
+  /// "Type distribution: Type 4 45%, Type 3 30%, Type 5 25%".
+  String _summaryLabel(int total) {
+    final List<MapEntry<BristolType, int>> sorted =
+        distribution.entries.where((MapEntry<BristolType, int> e) => e.value > 0).toList()
+          ..sort(
+            (MapEntry<BristolType, int> a, MapEntry<BristolType, int> b) =>
+                b.value.compareTo(a.value),
+          );
+    final String parts = sorted
+        .map(
+          (MapEntry<BristolType, int> e) =>
+              'Type ${e.key.number} ${(e.value / total * 100).round()}%',
+        )
+        .join(', ');
+    return 'Type distribution: $parts';
   }
 }
 
