@@ -154,7 +154,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // The quick-log popup shows Bristol type icons via semantic labels.
-      await tester.tap(find.bySemanticsLabel('Log Bristol type 4'));
+      await tester.tap(
+        find.bySemanticsLabel('Log Bristol type 4: ${BristolType.type4.label}'),
+      );
       await tester.pumpAndSettle();
 
       expect(fakeSync.scheduleCallCount, 1);

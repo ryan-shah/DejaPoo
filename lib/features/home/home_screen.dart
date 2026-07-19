@@ -10,6 +10,7 @@ import 'package:dejapoo/features/home/widgets/quick_log_popup.dart';
 import 'package:dejapoo/features/home/widgets/timeline_entry_tile.dart';
 import 'package:dejapoo/features/home/widgets/today_header.dart';
 import 'package:dejapoo/ui/theme/tokens.dart';
+import 'package:dejapoo/ui/widgets/error_retry_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -37,8 +38,9 @@ class HomeScreen extends ConsumerWidget {
       ),
       body: timelineAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (Object error, StackTrace stack) => Center(
-          child: Text('Something went wrong: $error'),
+        error: (Object error, StackTrace stack) => ErrorRetryWidget(
+          error: error,
+          onRetry: () => ref.invalidate(timelineProvider),
         ),
         data: (List<BowelMovement> entries) {
           if (entries.isEmpty) {
@@ -47,11 +49,19 @@ class HomeScreen extends ConsumerWidget {
           return _TimelineList(entries: entries, summary: summary);
         },
       ),
-      floatingActionButton: GestureDetector(
-        onLongPress: () => _quickLog(context, ref),
-        child: FloatingActionButton(
-          onPressed: () => showEntrySheet(context),
-          child: const Icon(Icons.add),
+      // NOTE: intentionally not using FloatingActionButton.tooltip here — its
+      // Tooltip wrapper installs its own long-press gesture recognizer, which
+      // competes with onLongPress below in the gesture arena and can swallow
+      // the quick-log long-press. Semantics gives the same accessibility
+      // label without a competing recognizer.
+      floatingActionButton: Semantics(
+        label: 'Add new entry. Long press to quick log.',
+        child: GestureDetector(
+          onLongPress: () => _quickLog(context, ref),
+          child: FloatingActionButton(
+            onPressed: () => showEntrySheet(context),
+            child: const Icon(Icons.add),
+          ),
         ),
       ),
     );

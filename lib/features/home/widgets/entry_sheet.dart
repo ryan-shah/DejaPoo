@@ -295,6 +295,7 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
               const _SectionLabel(label: 'Urgency'),
               const SizedBox(height: Spacing.sm),
               _ScaleSelector(
+                label: 'Urgency',
                 value: _urgency,
                 onChanged: (int? value) {
                   setState(() {
@@ -308,6 +309,7 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
               const _SectionLabel(label: 'Strain'),
               const SizedBox(height: Spacing.sm),
               _ScaleSelector(
+                label: 'Strain',
                 value: _strain,
                 onChanged: (int? value) {
                   setState(() {
@@ -544,10 +546,14 @@ class _DateTimeTile extends StatelessWidget {
 /// A row of 1-5 choice chips for urgency/strain scales.
 class _ScaleSelector extends StatelessWidget {
   const _ScaleSelector({
+    required this.label,
     required this.value,
     required this.onChanged,
   });
 
+  /// The name of this scale (e.g. "Urgency" or "Strain"), used to build the
+  /// semantics label for each chip.
+  final String label;
   final int? value;
   final ValueChanged<int?> onChanged;
 
@@ -557,12 +563,18 @@ class _ScaleSelector extends StatelessWidget {
       spacing: Spacing.sm,
       children: List<Widget>.generate(5, (int index) {
         final int scaleValue = index + 1;
-        return ChoiceChip(
-          label: Text('$scaleValue'),
-          selected: value == scaleValue,
-          onSelected: (bool selected) {
-            onChanged(selected ? scaleValue : null);
-          },
+        final bool selected = value == scaleValue;
+        return Semantics(
+          label: '$label $scaleValue of 5',
+          selected: selected,
+          excludeSemantics: true,
+          child: ChoiceChip(
+            label: Text('$scaleValue'),
+            selected: selected,
+            onSelected: (bool selected) {
+              onChanged(selected ? scaleValue : null);
+            },
+          ),
         );
       }),
     );

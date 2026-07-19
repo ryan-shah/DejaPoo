@@ -104,10 +104,13 @@ class StackedTypeBarChart extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        SizedBox(
-          height: 220,
-          child: BarChart(
-            BarChartData(
+        Semantics(
+          label: _summaryLabel(grouped, periodStarts.length),
+          excludeSemantics: true,
+          child: SizedBox(
+            height: 220,
+            child: BarChart(
+              BarChartData(
               maxY: maxY <= 0 ? 1 : maxY * 1.1,
               barGroups: barGroups,
               gridData: const FlGridData(drawVerticalLine: false),
@@ -161,10 +164,35 @@ class StackedTypeBarChart extends StatelessWidget {
             ),
           ),
         ),
+        ),
         const SizedBox(height: Spacing.md),
         _Legend(brightness: brightness),
       ],
     );
+  }
+
+  /// Builds a screen-reader summary of type totals across all periods, e.g.
+  /// "Type totals across 30 periods: Type 4 12, Type 3 8".
+  String _summaryLabel(
+    Map<DateTime, Map<BristolType, int>> grouped,
+    int periodCount,
+  ) {
+    final Map<BristolType, int> totals = <BristolType, int>{};
+    for (final Map<BristolType, int> counts in grouped.values) {
+      for (final MapEntry<BristolType, int> entry in counts.entries) {
+        totals[entry.key] = (totals[entry.key] ?? 0) + entry.value;
+      }
+    }
+    final List<MapEntry<BristolType, int>> sorted =
+        totals.entries.where((MapEntry<BristolType, int> e) => e.value > 0).toList()
+          ..sort(
+            (MapEntry<BristolType, int> a, MapEntry<BristolType, int> b) =>
+                b.value.compareTo(a.value),
+          );
+    final String parts = sorted
+        .map((MapEntry<BristolType, int> e) => 'Type ${e.key.number} ${e.value}')
+        .join(', ');
+    return 'Type totals across $periodCount periods: $parts';
   }
 }
 
