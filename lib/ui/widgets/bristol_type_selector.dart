@@ -59,32 +59,38 @@ class _BristolTypeOption extends StatelessWidget {
         selected ? colors.primaryContainer : colors.surfaceContainer;
     final Color iconColor = selected ? colors.primary : colors.onSurfaceVariant;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: IconSizes.bristolCircle,
-            height: IconSizes.bristolCircle,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: backgroundColor,
-              border: Border.all(
-                color: borderColor,
-                width: selected ? 2.0 : 1.0,
+    return Semantics(
+      label: 'Bristol type ${type.number}: ${type.label}',
+      selected: selected,
+      button: true,
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: IconSizes.bristolCircle,
+              height: IconSizes.bristolCircle,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: backgroundColor,
+                border: Border.all(
+                  color: borderColor,
+                  width: selected ? 2.0 : 1.0,
+                ),
+              ),
+              child: Center(
+                child: BristolIcon(type: type, color: iconColor),
               ),
             ),
-            child: Center(
-              child: BristolIcon(type: type, color: iconColor),
+            const SizedBox(height: Spacing.xs),
+            Text(
+              'Type ${type.number}',
+              style: Theme.of(context).textTheme.labelMedium,
             ),
-          ),
-          const SizedBox(height: Spacing.xs),
-          Text(
-            'Type ${type.number}',
-            style: Theme.of(context).textTheme.labelMedium,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
