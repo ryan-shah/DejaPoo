@@ -86,10 +86,11 @@ flutter run -d chrome --dart-define=DB_SMOKE=true   # expect "DB_SMOKE OK"
 - `dp-y82` iOS OAuth client verification + build — requires a Mac
 - `dp-9w0` Re-add riverpod_lint + custom_lint when analyzer versions align
 - `dp-h5e` Import stale-row cleanup: handle decreased counts on re-import
-- APK/appbundle release build verification — core library desugaring added for
-  flutter_local_notifications (isCoreLibraryDesugaringEnabled + desugar_jdk_libs:2.1.4);
-  Gradle daemon stalling on Windows prevented full verification this session. The config is
-  correct; run `flutter build apk --release` to verify
+- APK release build — VERIFIED (`flutter build apk --release` produces 65.5MB APK). Required
+  three Gradle fixes: core library desugaring for flutter_local_notifications, force-apply KGP
+  to library subprojects (file_picker/share_plus skip KGP on AGP 9 but builtInKotlin=false),
+  and compileSdk override for plugins stuck on SDK 31 (flutter_native_splash). Gradle JVM heap
+  reduced from 8G to 4G to prevent daemon OOM crashes on Windows
 
 ## Pointers for next phase
 
