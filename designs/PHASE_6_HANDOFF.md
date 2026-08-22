@@ -166,3 +166,36 @@ resurfacing it.
 `flutter build apk --release` (66.6MB), `flutter run -d chrome --dart-define=DB_SMOKE=true`
 -> `DB_SMOKE OK`. Still requires a human: launcher icon + themed-icon variant on an Android
 emulator, and OPFS on the deployed Pages build.
+
+## Dependency upgrade (2026-08-22)
+
+`flutter pub upgrade` + `dart run build_runner build` moved 31 packages. `drift`/`drift_dev`
+held at **2.34.0** — the exact pins in `pubspec.yaml` did their job; do not relax them.
+
+The one bump with downstream obligations was **`sqlite3` 3.4.0 -> 3.5.2**. Per the
+`drift-flutter` skill §1/§3, `dart run tool/setup_web.dart` was re-run, regenerating
+`web/sqlite3.wasm` (pinned to the lock-resolved 3.5.2) and recompiling `web/drift_worker.js`
+with the project's own drift. Both artifacts changed on disk — the pre-upgrade tree briefly had
+3.5.2 resolved against 3.4.0-era committed WASM, which is exactly the silent-skew failure §3
+warns about. `dart run drift_dev schema dump` produced no schema change (no table edits).
+
+`vector_graphics_compiler` 1.2.6 -> 1.3.0 touches the flutter_svg path
+`tool/render_icons.dart` uses; the icon PNGs re-rendered **byte-identical**, so the renderer is
+stable across that bump.
+
+Two recurring sources of "dirty" files, for whoever sees them next:
+
+- `analysis_options.yaml` — `flutter pub upgrade` rewrites this itself, logging "Upgrading
+  analysis_options.yaml to exclude build and platform directories". The six platform excludes
+  are now committed so it stops reappearing.
+- `lib/**/*.g.dart` and `drift_schemas/*.json` — build_runner and drift_dev write LF into a
+  CRLF working tree, so they show as modified with **zero content change**. Verify with
+  `diff <(git show HEAD:<file> | tr -d '\r') <(tr -d '\r' < <file>)` before assuming a real
+  diff, and `git checkout --` them rather than committing the churn. A `.gitattributes`
+  normalisation would fix this permanently but would renormalise much of the repo in one
+  commit — not done here.
+
+Gates after the upgrade: `flutter analyze` (1 pre-existing info lint), `flutter test --timeout
+30s` (305 passed, 1 skipped), `flutter build apk --release` (66.4MB), `flutter build web
+--release --base-href /DejaPoo/`, and `DB_SMOKE OK` — with the main database reporting
+`WasmStorageImplementation.opfsLocks`, i.e. OPFS engaged via the COI service worker.
