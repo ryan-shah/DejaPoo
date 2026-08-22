@@ -145,9 +145,12 @@ submission without re-deriving context:
 
 - **Bundle ID:** `com.dejapoo.dejapoo` (set in `ios/Runner.xcodeproj/project.pbxproj`)
 - **App icon / launch screen:** configured via `flutter_launcher_icons` /
-  `flutter_native_splash` assets already present in the repo (see `pubspec.yaml`); running
-  `dart run flutter_launcher_icons` and `dart run flutter_native_splash:create` on macOS
-  regenerates the iOS asset catalogs if the source images change.
+  `flutter_native_splash` assets already present in the repo (see `pubspec.yaml`). The iOS asset
+  catalogs (`AppIcon.appiconset`, `LaunchImage.imageset`, `LaunchBackground.imageset`) are current
+  as of the 2026-08-22 icon redesign and were regenerated **from Windows** — both generators are
+  pure image processing and do not need a Mac. Re-run them after editing `assets/icon/*.svg`;
+  see the regeneration order in `designs/PHASE_6_HANDOFF.md`. Only *building and signing* the iOS
+  app requires macOS.
 - **OAuth client:** create an iOS OAuth client ID in Google Cloud Console using the Bundle
   ID above, download `GoogleService-Info.plist`, and wire up the reversed client ID URL
   scheme in `ios/Runner/Info.plist` — full steps in `designs/GOOGLE_OAUTH_SETUP.md` §6.

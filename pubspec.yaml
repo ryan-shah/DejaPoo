@@ -59,14 +59,27 @@ flutter_launcher_icons:
   image_path: "assets/icon/app_icon.png"
   adaptive_icon_background: "#6FAE8D"
   adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  # Android 13+ themed icons. The launcher tints this layer to the wallpaper palette.
+  adaptive_icon_monochrome: "assets/icon/app_icon_monochrome.png"
   web:
     generate: true
     image_path: "assets/icon/app_icon.png"
+    background_color: "#FAFAF7"
+    theme_color: "#6FAE8D"
 
 flutter_native_splash:
+  # app_splash.png is the icon on a rounded sage field with transparent surroundings,
+  # so it reads as the app icon on the splash background rather than a full-bleed tile.
   color: "#FAFAF7"
-  image: "assets/icon/app_icon.png"
+  color_dark: "#1A1F1A"
+  image: "assets/icon/app_splash.png"
+  image_dark: "assets/icon/app_splash.png"
   android_12:
+    # Android 12+ draws the icon inside its own circular container, so this layer is
+    # the transparent foreground on the sage container colour.
     color: "#FAFAF7"
+    color_dark: "#1A1F1A"
     icon_background_color: "#6FAE8D"
-    image: "assets/icon/app_icon.png"
+    icon_background_color_dark: "#6FAE8D"
+    image: "assets/icon/app_icon_foreground.png"
+    image_dark: "assets/icon/app_icon_foreground.png"

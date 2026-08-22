@@ -17,7 +17,8 @@ states), and release signing configuration with store listing documentation.
   `scheduleDebouncedSync()`
 - App identity (icons, splash, manifest) — PASS: `flutter_launcher_icons` +
   `flutter_native_splash` generated assets committed; `web/manifest.json` shows DejaPoo
-  branding with sage palette colors
+  branding with sage palette colors. **Icon redesigned 2026-08-22 (`dp-0rw`)** — the original
+  mark read as a hamburger menu; see "Icon redesign" below
 - Daily reminder notification — PASS: 8 tests in
   `test/data/notifications/notification_service_test.dart`; enable/disable/reschedule/permission
   denial all verified with fake; hidden on web
@@ -53,7 +54,7 @@ states), and release signing configuration with store listing documentation.
 - `web/index.html` — COI SW registration, DejaPoo branding, splash, theme-color
 - `web/manifest.json` — DejaPoo name, sage palette colors, real description
 - `android/app/build.gradle.kts` — release signing with debug fallback
-- `assets/icon/` — app icon PNG + foreground
+- `assets/icon/` — icon SVG masters (artwork of record) + rendered PNGs; see "Icon redesign" below
 - `designs/STORE_LISTING.md` — store listing, privacy policy, data safety answers
 - `pubspec.yaml` — new deps: flutter_local_notifications, timezone, shared_preferences,
   permission_handler, flutter_launcher_icons (dev), flutter_native_splash (dev), image (dev)
@@ -102,3 +103,66 @@ flutter run -d chrome --dart-define=DB_SMOKE=true   # expect "DB_SMOKE OK"
   `web/index.html` must preserve the SW registration before `flutter_bootstrap.js`
 - Manual gates still needed: notification fires on Android emulator, PWA installs from Pages
   with correct icon, real-account sync works after debounce wiring
+
+## Icon redesign (2026-08-22, `dp-0rw`)
+
+The Phase 6 launcher icon — three horizontal rounded bars on a flat sage square — read as a
+hamburger menu. Two causes: the mark used no rotation, while every `assets/icons/bristol_type_*.svg`
+tilts its shapes; and `tool/generate_icon.dart` drew procedurally with `package:image`'s
+`fillRect`/`fillCircle`, which has no anti-aliasing and cannot rotate a shape, so the design space
+was limited to axis-aligned bars.
+
+**New mark:** a Bristol type-4 capsule in forest `#3E6B48`, tilted −25°, ringed by seven off-white
+`#FAFAF7` dots on a sage `#6FAE8D` field. Seven dots read as the seven Bristol types or a week of
+entries; the enlarged top dot marks today. Chosen by the user from a rendered candidate sheet
+(eight marks, then six colour treatments).
+
+**Pipeline change — SVG is now the artwork of record.** `tool/generate_icon.dart` is deleted and
+replaced by `tool/render_icons.dart`, which rasterises the SVG masters through `flutter_svg`
+(already a dependency) to a `ui.Picture` drawn offscreen — real anti-aliasing, real transforms. It
+lives in `tool/` so `flutter test` (which globs `test/` only) never rewrites committed artwork, but
+runs under `flutter test` because rasterising SVG needs a Flutter engine.
+
+Regenerate with, in order:
+
+```bash
+flutter test tool/render_icons.dart      # SVG masters -> assets/icon/*.png
+dart run flutter_launcher_icons
+dart run flutter_native_splash:create
+flutter test tool/render_icons.dart      # restores web/favicon.png at 64px
+```
+
+The final step is required: `flutter_launcher_icons` has no favicon size option and always emits
+16x16.
+
+**Geometry constraints baked into the SVGs** (change these and re-check the numbers):
+
+- Ring radius is 16.0 on the 48-unit grid. The widest point is the enlarged today-dot at 79.5% of
+  the icon width — inside the 80% PWA maskable safe circle. This is why `Icon-maskable-*.png` may
+  be byte-identical to the plain icons and that is now correct, not a bug: the mark already fits
+  the maskable safe zone, so no extra padding is needed.
+- `app_icon_foreground.svg` scales the mark 1.1x and fills its own canvas as the 72dp viewport.
+  `mipmap-anydpi-v26/ic_launcher.xml` insets it 16%, landing the mark at ~59% of the 108dp canvas,
+  inside the 61% guaranteed-safe circle. The old generator pre-scaled to 0.62 **and** took that
+  inset, which is why the adaptive mark was tiny.
+
+**Also fixed in the same pass:** `<monochrome>` layer added for Android 13+ themed icons
+(`adaptive_icon_monochrome`); `web/favicon.png` 16x16 -> 64x64; splash now uses `app_splash.png`
+(the icon on a rounded sage field with transparent surroundings) instead of the full-bleed square
+that rendered as a floating green tile; dark splash given its own background `#1A1F1A` instead of
+being byte-identical to the light one.
+
+**iOS:** `flutter_launcher_icons` and `flutter_native_splash` both regenerated the iOS asset
+catalogs from Windows without a Mac, so `AppIcon.appiconset` and the launch imagesets are current.
+Only *building/signing* the iOS app still needs macOS (`dp-y82`).
+
+**Note:** `image: ^4.3.0` stays in `dev_dependencies` even though nothing imports it directly now.
+It is load-bearing for resolution — `flutter_native_splash` is pinned `^2.4.4` to avoid an
+image/archive/xml conflict with `excel ^4.0.6` (above), and dropping the explicit constraint risks
+resurfacing it.
+
+**Verification:** `flutter analyze` (1 pre-existing info lint), `flutter test --timeout 30s`
+(305 passed, 1 skipped), `flutter build web --release --base-href /DejaPoo/`,
+`flutter build apk --release` (66.6MB), `flutter run -d chrome --dart-define=DB_SMOKE=true`
+-> `DB_SMOKE OK`. Still requires a human: launcher icon + themed-icon variant on an Android
+emulator, and OPFS on the deployed Pages build.

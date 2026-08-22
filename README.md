@@ -48,8 +48,10 @@ design document and phase breakdown.
 - **Responsive layout** — NavigationRail at 840dp+ for tablets/desktop, NavigationBar on phone
 - **Accessibility** — Bristol type icons announce type + description + selection state; charts
   provide text summaries for screen readers; all screens have designed error/retry and empty states
-- **App identity** — branded launcher icon (sage palette), native splash screen, PWA manifest
-  with correct name/colors/description
+- **App identity** — launcher icon drawn in the Bristol visual language: a tilted type-4 capsule
+  ringed by seven dots (the seven Bristol types, or a week), two-tone sage. The SVGs in
+  `assets/icon/` are the artwork of record; `flutter test tool/render_icons.dart` rasterises them.
+  Android adaptive + themed (monochrome) icons, native splash with a dark variant, PWA manifest
 - **Cross-origin isolation** — COI service worker enables OPFS storage for the web build on
   GitHub Pages (without it drift falls back to IndexedDB permanently)
 - **Persistent local storage** — Drift/SQLite on native, WASM sqlite on web; soft-delete
