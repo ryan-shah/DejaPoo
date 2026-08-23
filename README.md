@@ -51,6 +51,9 @@ design document and phase breakdown.
   mobile uses the native share sheet
 - **Daily reminders** — optional local notification at a user-chosen time ("Log today's movements"),
   with Android 13+ permission handling; hidden on web
+- **Update check** — Settings → About → "Check for updates" asks GitHub for the latest release
+  and, when the running build is behind it, offers a one-tap download of that release's APK
+  (PR prereleases are never offered); runs only when tapped
 - **Responsive layout** — NavigationRail at 840dp+ for tablets/desktop, NavigationBar on phone
 - **Accessibility** — Bristol type icons announce type + description + selection state; charts
   provide text summaries for screen readers; all screens have designed error/retry and empty states
@@ -112,6 +115,12 @@ Every merge to `main` publishes a GitHub Release with the Android artifacts atta
 **<https://github.com/ryan-shah/DejaPoo/releases/latest>**. The web build is deployed to
 GitHub Pages. Open **Settings → About → Version** in the app to see which build you are on
 (`dev` for local builds).
+
+**Settings → About → Check for updates** compares that version against the latest GitHub
+release and, when one is newer, shows a **Download** button that opens the release's
+`.apk` asset directly (falling back to the release page if it has no APK). The check reads
+the public `releases/latest` endpoint, which excludes the `pr-<N>` prereleases below, and
+runs only when the user taps it — the app never contacts GitHub on its own.
 
 Each pull request additionally gets a `pr-<N>` prerelease with that PR's test APK, plus a
 web preview at `/DejaPoo/pr-<N>/`; both are deleted automatically when the PR closes.
