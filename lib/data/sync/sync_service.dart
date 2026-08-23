@@ -8,6 +8,14 @@ import 'package:dejapoo/data/sync/sync_models.dart';
 import 'package:dejapoo/domain/bowel_movement.dart';
 import 'package:dejapoo/domain/bowel_movement_repository.dart';
 
+/// Key under which the last successful sync instant (an ISO-8601 **UTC**
+/// string) is persisted in the `SyncStates` key/value table.
+///
+/// Public so the staleness reminder (`lib/data/sync/sync_reminder.dart`) can
+/// read the persisted value directly — it must work while the user is signed
+/// out, when no [SyncService] can be constructed.
+const String kLastSyncAtKey = 'lastSyncAt';
+
 /// High-level sync status.
 enum SyncStatus { idle, syncing, success, error }
 
@@ -60,8 +68,6 @@ class SyncService {
   /// Single-flight guard: if a sync is already running, callers await the
   /// same completer rather than starting a second cycle.
   Completer<void>? _inflight;
-
-  static const String _lastSyncKey = 'lastSyncAt';
 
   /// Runs one pull-merge-push cycle.
   ///
@@ -127,7 +133,7 @@ class SyncService {
 
       // 10. Record lastSyncAt.
       final now = DateTime.now().toUtc();
-      await _syncStateRepo.set(_lastSyncKey, now.toIso8601String());
+      await _syncStateRepo.set(kLastSyncAtKey, now.toIso8601String());
 
       _emit(SyncState(
         status: SyncStatus.success,
@@ -166,12 +172,12 @@ class SyncService {
   /// Deletes the remote snapshot from Drive.
   Future<void> clearRemote() async {
     await _driveStore.deleteSnapshot();
-    await _syncStateRepo.delete(_lastSyncKey);
+    await _syncStateRepo.delete(kLastSyncAtKey);
   }
 
   /// Loads the persisted lastSyncAt from the database.
   Future<DateTime?> loadLastSyncAt() async {
-    final raw = await _syncStateRepo.get(_lastSyncKey);
+    final raw = await _syncStateRepo.get(kLastSyncAtKey);
     if (raw == null) return null;
     return DateTime.tryParse(raw)?.toUtc();
   }
