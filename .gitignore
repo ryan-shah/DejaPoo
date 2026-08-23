@@ -52,3 +52,7 @@ app.*.map.json
 # Personal reference data — never commit (health data / family photos)
 Alex Bowels.xlsx
 HuckleberryReference/
+
+# Beads runtime artifacts (machine-local; the tracked export is .beads/issues.jsonl)
+.beads.gate.lock
+.beads/.auto-import-issues.jsonl
