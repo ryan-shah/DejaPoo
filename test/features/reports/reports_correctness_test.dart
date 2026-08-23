@@ -1,7 +1,7 @@
 // Phase 3 exit-criterion correctness gate (dp-85t.5): verifies that every
-// ReportRange kind (Day/Week/Month/Year/Custom) and every ReportStats field
+// ReportRange kind (Day/7-day/Month/Year/Custom) and every ReportStats field
 // renders exact expected numbers against fixture data, including the
-// boundary cases called out in DESIGN.md (month-straddling weeks, 23:59
+// boundary cases called out in DESIGN.md (month-straddling windows, 23:59
 // local-time events, empty ranges, dateOnly events, most-common-type ties,
 // and healthy-percentage rounding).
 import 'package:dejapoo/data/db/app_database.dart';
@@ -86,8 +86,10 @@ void main() {
     });
   });
 
-  group('Week range (straddles a month boundary)', () {
-    test('exact numbers for Jun 29 - Jul 5 2026', () async {
+  group('Last 7 days range', () {
+    // Fixture shared by both tests below: Jun 29 (type1), Jun 30 (type3),
+    // Jul 1 (type4), Jul 5 (type5), all 2026.
+    Future<void> seed() async {
       await repo.create(
         occurredAt: DateTime(2026, 6, 29, 9),
         bristolType: BristolType.type1,
@@ -104,9 +106,15 @@ void main() {
         occurredAt: DateTime(2026, 7, 5, 9),
         bristolType: BristolType.type5,
       );
+    }
 
+    test('exact numbers for Jun 29 - Jul 5 2026 (straddles a month boundary)',
+        () async {
+      await seed();
+
+      // The anchor is the END day, so Jul 5 yields the Jun 29 - Jul 5 window.
       final ReportRange range =
-          ReportRange.week(anchor: DateTime(2026, 6, 30));
+          ReportRange.last7Days(anchor: DateTime(2026, 7, 5));
       expect(range.firstDay, DateTime(2026, 6, 29));
       expect(range.lastDay, DateTime(2026, 7, 5));
 
@@ -130,6 +138,36 @@ void main() {
         DateTime(2026, 7, 1),
         DateTime(2026, 7, 5),
       ]));
+    });
+
+    test('anchor is the end day: Jun 24 - Jun 30 excludes later events',
+        () async {
+      await seed();
+
+      final ReportRange range =
+          ReportRange.last7Days(anchor: DateTime(2026, 6, 30));
+      expect(range.firstDay, DateTime(2026, 6, 24));
+      expect(range.lastDay, DateTime(2026, 6, 30));
+
+      final ReportStats stats = await statsFor(range);
+      // Only Jun 29 (type1) and Jun 30 (type3) fall inside the window; the
+      // Jul 1 and Jul 5 events are after the anchor and must be excluded.
+      expect(stats.total, 2);
+      expect(stats.averagePerDay, closeTo(2 / 7, 0.0001));
+      // type1 and type3 tie at count 1; the lowest-numbered type wins.
+      expect(stats.mostCommonType, BristolType.type1);
+      // Healthy = type3 only = 1 of 2.
+      expect(stats.healthyPercentage, closeTo(50.0, 0.0001));
+      // Event days: Jun29, Jun30 -> adjacent, so no gap.
+      expect(stats.longestGapDays, 0);
+
+      final List<DailyTypeCount> daily =
+          await container.read(reportDailyTypeCountsProvider.future);
+      final Set<DateTime> days = daily.map((DailyTypeCount d) => d.day).toSet();
+      expect(days, <DateTime>{
+        DateTime(2026, 6, 29),
+        DateTime(2026, 6, 30),
+      });
     });
   });
 
