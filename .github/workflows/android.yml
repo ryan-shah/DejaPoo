@@ -57,11 +57,45 @@ jobs:
             "$STORE_PASSWORD" "$KEY_PASSWORD" "$KEY_ALIAS" \
             > android/key.properties
 
+      # Without this the release build falls back to Gradle's `debug` signing
+      # config, which uses a keystore the runner generates per run: a different
+      # SHA-1 every build, so Google Sign-In rejects the APK. Sign with a fixed
+      # keystore whose fingerprint is registered against the Android OAuth
+      # client instead (see designs/GOOGLE_OAUTH_SETUP.md). Deliberately writes
+      # key.properties rather than dropping the keystore at ~/.android, which
+      # AGP did not pick up on the runner.
+      - name: Set up CI test signing
+        env:
+          CI_DEBUG_KEYSTORE_BASE64: ${{ secrets.CI_DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          if [ -f android/key.properties ]; then
+            echo "Real release keystore configured; leaving it in place."
+            exit 0
+          fi
+          if [ -z "$CI_DEBUG_KEYSTORE_BASE64" ]; then
+            echo "::warning::CI_DEBUG_KEYSTORE_BASE64 is not set; the APK will be signed with an ephemeral debug key and cannot use Google Sign-In."
+            exit 0
+          fi
+          echo "$CI_DEBUG_KEYSTORE_BASE64" | base64 -d > android/app/ci-test-keystore.jks
+          {
+            echo "storePassword=android"
+            echo "keyPassword=android"
+            echo "keyAlias=androiddebugkey"
+            echo "storeFile=ci-test-keystore.jks"
+          } > android/key.properties
+
       - name: Build APK
         run: |
           flutter build apk --release \
             --build-name=${{ steps.version.outputs.name }} \
             --build-number=${{ steps.version.outputs.code }}
+
+      # A wrongly-signed APK still builds and tests green, and only fails later
+      # at sign-in on a device. Print the fingerprint so it is checkable here.
+      - name: Report APK signing certificate
+        run: |
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs build/app/outputs/flutter-apk/app-release.apk
 
       - name: Build AAB
         if: github.event_name == 'push'
@@ -76,6 +110,31 @@ jobs:
         with:
           name: dejapoo-pr-${{ github.event.number }}
           path: build/app/outputs/flutter-apk/app-release.apk
+
+      # PR artifacts download as a ZIP and require a GitHub login, which is
+      # awkward on a phone. Publish the APK as a prerelease as well so it has
+      # a direct, one-tap download link. Skipped for fork PRs, whose
+      # read-only token cannot create releases.
+      - name: Publish PR prerelease
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: pr-${{ github.event.number }}
+          target_commitish: ${{ github.event.pull_request.head.sha }}
+          name: PR #${{ github.event.number }} test build
+          prerelease: true
+          body: |
+            Test build of PR #${{ github.event.number }}. Not a release, and
+            deleted automatically when the PR closes.
+
+            Signed with the CI test keystore, whose fingerprint must be
+            registered on the Android OAuth client for Google Sign-In to
+            work — see designs/GOOGLE_OAUTH_SETUP.md.
+
+            Commit: ${{ github.event.pull_request.head.sha }}
+          files: build/app/outputs/flutter-apk/app-release.apk
 
       - name: Create release
         if: github.event_name == 'push'

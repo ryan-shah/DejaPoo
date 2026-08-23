@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' show DriveApi;
 import 'package:googleapis_auth/googleapis_auth.dart' as gapis;
@@ -19,6 +20,31 @@ enum AuthStatus {
   /// Signed in and Drive appdata scope has been authorized.
   driveAuthorized,
 }
+
+/// OAuth **web** client ID of the DejaPoo Google Cloud project.
+///
+/// Android's Credential Manager flow (google_sign_in 7.x) authenticates against
+/// the *web* client ID, passed as `serverClientId`; without it `authenticate()`
+/// fails with `GoogleSignInExceptionCode.clientConfigurationError`. It is not a
+/// secret (the same value is published in `web/index.html`), but it can be
+/// overridden per-build with `--dart-define=GOOGLE_SERVER_CLIENT_ID=...`.
+///
+/// Note this only covers the *server* half of the config. The Cloud project
+/// must also hold an **Android** OAuth client for the app's package name and
+/// signing-key SHA-1, or sign-in fails with no credentials available. That
+/// client's ID is never referenced in code (Android identifies apps by package
+/// name + signing SHA-1), so it is recorded here for traceability:
+///
+///   client:  460206928839-89bupm334i8hqnpmh7muibmr2iekk8pe
+///   package: com.dejapoo.dejapoo
+///   SHA-1:   1C:E0:5C:A2:93:FF:78:6A:E8:6F:49:F7:CE:57:85:2E:FA:C7:21:78
+///            (the local debug keystore; release builds fall back to it until
+///            android/key.properties exists, which then needs its own client)
+const String _serverClientId = String.fromEnvironment(
+  'GOOGLE_SERVER_CLIENT_ID',
+  defaultValue:
+      '460206928839-cvl27ghr2k5nvtml6e5mc82i2v6o3b1l.apps.googleusercontent.com',
+);
 
 /// Scopes needed for Drive sync, export upload, and Drive import.
 const List<String> _driveScopes = <String>[
@@ -53,14 +79,24 @@ class GoogleAuth extends _$GoogleAuth {
 
     // Initialize the sign-in SDK. This is safe to call even when no OAuth
     // client IDs are configured (it just won't be able to authenticate).
-    GoogleSignIn.instance.initialize().then((_) {
+    //
+    // `serverClientId` is required on Android and rejected on web (which reads
+    // its client ID from the `google-signin-client_id` meta tag instead).
+    GoogleSignIn.instance.initialize(
+      serverClientId:
+          kIsWeb || _serverClientId.isEmpty ? null : _serverClientId,
+    ).then((_) {
       // Attempt lightweight (silent) authentication for returning users.
       GoogleSignIn.instance.attemptLightweightAuthentication();
 
       // Listen for auth events.
       GoogleSignIn.instance.authenticationEvents.listen(
         _handleAuthEvent,
-        // ignore errors — the stream never errors in practice
+        // `authenticate()` both rethrows and mirrors GoogleSignInException onto
+        // this stream, so a listener without onError turns every cancelled
+        // sign-in into an unhandled async error. Callers surface the rethrown
+        // copy (see _handleSignIn in settings_screen.dart); drop this one.
+        onError: (Object _) {},
       );
     }).catchError((_) {
       // Initialization can fail if the platform plugin is not available

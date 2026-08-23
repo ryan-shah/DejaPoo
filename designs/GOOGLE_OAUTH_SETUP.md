@@ -44,8 +44,8 @@ review if the app were published, but Testing mode avoids this entirely.
 2. Click **Create Credentials > OAuth client ID**
 3. **Application type:** Android
 4. **Name:** DejaPoo Android
-5. **Package name:** `com.example.dejapoo`
-   (check `android/app/build.gradle.kts` for the actual `applicationId`)
+5. **Package name:** `com.dejapoo.dejapoo`
+   (matches `applicationId` in `android/app/build.gradle.kts`)
 6. **SHA-1 certificate fingerprint:** obtain from the debug keystore:
 
    ```bash
@@ -78,9 +78,38 @@ works fine in debug — the release keystore's fingerprint doesn't match any
 registered client. Re-run `./gradlew signingReport` from `android/` after adding
 `key.properties` to confirm which SHA-1 the release build type is actually using.
 
-**Note:** No code changes are needed for Android. The `google_sign_in` plugin
-matches the app's package name and signing certificate against the registered
-OAuth client IDs automatically.
+**Note:** The Android OAuth client ID itself is never referenced in code — the
+plugin matches the app's package name and signing certificate against the
+registered clients automatically. But that is only half the configuration:
+`google_sign_in` 7.x authenticates through Android's Credential Manager, which
+additionally requires the **web** client ID passed as `serverClientId` to
+`GoogleSignIn.instance.initialize()`. Without it, `authenticate()` throws
+`GoogleSignInExceptionCode.clientConfigurationError` before showing any UI. See
+`lib/data/auth/google_auth_provider.dart`; note that web rejects `serverClientId`
+(it asserts the value is null), so it must be passed only when `!kIsWeb`.
+
+### CI builds
+
+GitHub Actions builds are signed with a fixed keystore stored in the
+`CI_DEBUG_KEYSTORE_BASE64` repository secret, installed to `~/.android/debug.keystore`
+by `.github/workflows/android.yml`. Without it the runner generates a throwaway
+keystore per run, so the APK's fingerprint would never match a registered client
+and sign-in would fail in every CI artifact.
+
+Add this fingerprint to the **DejaPoo Android** OAuth client (Credentials > the
+Android client > **Add fingerprint**) so CI-built APKs can sign in:
+
+```
+4F:8E:C9:B9:D9:D4:65:2E:A6:F4:91:E0:26:B9:23:D1:6C:2F:3A:77
+```
+
+One Android OAuth client can hold multiple fingerprints, so this sits alongside
+the local debug and release ones rather than needing its own client.
+
+To rotate the CI key, generate a new keystore with alias `androiddebugkey` and
+store/key password `android` (the values Gradle's `debug` signing config expects),
+upload it with `gh secret set CI_DEBUG_KEYSTORE_BASE64 < keystore.b64`, and
+register the new SHA-1 here.
 
 ## 5. Create a Web OAuth Client ID
 
