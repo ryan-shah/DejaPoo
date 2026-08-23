@@ -111,6 +111,31 @@ jobs:
           name: dejapoo-pr-${{ github.event.number }}
           path: build/app/outputs/flutter-apk/app-release.apk
 
+      # PR artifacts download as a ZIP and require a GitHub login, which is
+      # awkward on a phone. Publish the APK as a prerelease as well so it has
+      # a direct, one-tap download link. Skipped for fork PRs, whose
+      # read-only token cannot create releases.
+      - name: Publish PR prerelease
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: pr-${{ github.event.number }}
+          target_commitish: ${{ github.event.pull_request.head.sha }}
+          name: PR #${{ github.event.number }} test build
+          prerelease: true
+          body: |
+            Test build of PR #${{ github.event.number }}. Not a release, and
+            deleted automatically when the PR closes.
+
+            Signed with the CI test keystore, whose fingerprint must be
+            registered on the Android OAuth client for Google Sign-In to
+            work — see designs/GOOGLE_OAUTH_SETUP.md.
+
+            Commit: ${{ github.event.pull_request.head.sha }}
+          files: build/app/outputs/flutter-apk/app-release.apk
+
       - name: Create release
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2

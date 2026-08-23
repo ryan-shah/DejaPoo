@@ -32,3 +32,17 @@ jobs:
           else
             echo "No preview folder found, nothing to clean up."
           fi
+
+      # The Android Build workflow publishes a prerelease per PR so the test
+      # APK has a direct download link; drop it with the rest of the preview.
+      - name: Delete PR prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="pr-${{ github.event.pull_request.number }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release delete "$TAG" --yes --cleanup-tag
+            echo "Deleted prerelease $TAG"
+          else
+            echo "No prerelease $TAG, nothing to clean up."
+          fi
