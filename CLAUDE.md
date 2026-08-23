@@ -90,7 +90,25 @@ flutter build apk --release
 
 # Build Android App Bundle
 flutter build appbundle --release
+
+# Print the version CI will stamp on this commit (name=<MAJOR.MINOR>.<commits>, code=<commits>)
+bash tool/ci_version.sh
 ```
+
+### Versioning & release artifacts
+
+`tool/ci_version.sh` is the single source of truth for the app version and is called by
+`android.yml`, `deploy_github_page.yml`, and `pr_preview.yml`:
+
+- `versionName` = `MAJOR.MINOR` from `pubspec.yaml` + the git commit count (e.g. `0.1.19`)
+- `versionCode` = the git commit count (e.g. `19`)
+
+So the version changes on every merge with no manual step, and tag `v0.1.N` matches build `N`.
+Bump the series by editing `MAJOR.MINOR` in `pubspec.yaml` (its patch / `+build` suffix is
+ignored). Every build workflow must check out with `fetch-depth: 0` or the commit count
+collapses to `1`. Release assets are `dejapoo-v<version>.apk` / `.aab`; PR builds are
+`dejapoo-pr<N>-v<version>.apk`. Web builds get `--dart-define=APP_VERSION=<version>`, surfaced
+in Settings → About → Version (`dev` locally).
 
 ### Test-run rules (learned the hard way, 2026-07-16)
 
