@@ -12,27 +12,17 @@ jobs:
     permissions:
       contents: write
     steps:
+      # fetch-depth: 0 is required: tool/ci_version.sh derives the version from
+      # the commit count, which collapses to 1 on a shallow clone.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # versionName = <MAJOR.MINOR from pubspec.yaml>.<commit count>,
+      # versionCode = <commit count>. See tool/ci_version.sh.
       - name: Compute version
         id: version
-        run: |
-          VERSION_CODE=$(git rev-list --count HEAD)
-          LATEST_TAG=$(git describe --tags --match "v*" --abbrev=0 2>/dev/null || echo "")
-          if [ -n "$LATEST_TAG" ]; then
-            VERSION_NAME=${LATEST_TAG#v}
-            DISTANCE=$(git rev-list --count "${LATEST_TAG}..HEAD")
-            if [ "$DISTANCE" -gt 0 ]; then
-              VERSION_NAME="${VERSION_NAME}+${DISTANCE}"
-            fi
-          else
-            VERSION_NAME="0.1.0"
-          fi
-          echo "name=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
-          echo "code=${VERSION_CODE}" >> "$GITHUB_OUTPUT"
-          echo "Version: ${VERSION_NAME} (code ${VERSION_CODE})"
+        run: bash tool/ci_version.sh
 
       - uses: actions/setup-java@v4
         with:
@@ -44,8 +34,12 @@ jobs:
       - run: flutter pub get
       - run: dart run build_runner build --delete-conflicting-outputs
 
+      # NOTE: the `if:` must read `secrets.` directly. A step's own `env:` block
+      # is not visible to that step's `if:` expression, so the previous
+      # `env.KEYSTORE_BASE64 != ''` was always false and this step never ran —
+      # the real release keystore was never written even with the secrets set.
       - name: Set up release signing
-        if: github.event_name == 'push' && env.KEYSTORE_BASE64 != ''
+        if: github.event_name == 'push' && secrets.KEYSTORE_BASE64 != ''
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
@@ -84,32 +78,57 @@ jobs:
             echo "storeFile=ci-test-keystore.jks"
           } > android/key.properties
 
+      # The APK/AAB are renamed to carry the version so a downloaded artifact
+      # is self-identifying. APK_PATH/AAB_PATH are exported to $GITHUB_ENV so
+      # every later step (verification, uploads, releases) uses one path.
       - name: Build APK
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+          PR_NUMBER: ${{ github.event.number }}
         run: |
           flutter build apk --release \
-            --build-name=${{ steps.version.outputs.name }} \
-            --build-number=${{ steps.version.outputs.code }}
+            --build-name="$VERSION_NAME" \
+            --build-number="$VERSION_CODE" \
+            --dart-define=APP_VERSION="$VERSION_NAME"
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            APK_NAME="dejapoo-pr${PR_NUMBER}-v${VERSION_NAME}.apk"
+          else
+            APK_NAME="dejapoo-v${VERSION_NAME}.apk"
+          fi
+          APK_PATH="build/app/outputs/flutter-apk/${APK_NAME}"
+          mv build/app/outputs/flutter-apk/app-release.apk "$APK_PATH"
+          echo "APK_PATH=${APK_PATH}" >> "$GITHUB_ENV"
+          echo "Built $APK_PATH"
 
       # A wrongly-signed APK still builds and tests green, and only fails later
       # at sign-in on a device. Print the fingerprint so it is checkable here.
       - name: Report APK signing certificate
         run: |
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
-          "$APKSIGNER" verify --print-certs build/app/outputs/flutter-apk/app-release.apk
+          "$APKSIGNER" verify --print-certs "$APK_PATH"
 
       - name: Build AAB
         if: github.event_name == 'push'
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
         run: |
           flutter build appbundle --release \
-            --build-name=${{ steps.version.outputs.name }} \
-            --build-number=${{ steps.version.outputs.code }}
+            --build-name="$VERSION_NAME" \
+            --build-number="$VERSION_CODE" \
+            --dart-define=APP_VERSION="$VERSION_NAME"
+          AAB_PATH="build/app/outputs/bundle/release/dejapoo-v${VERSION_NAME}.aab"
+          mv build/app/outputs/bundle/release/app-release.aab "$AAB_PATH"
+          echo "AAB_PATH=${AAB_PATH}" >> "$GITHUB_ENV"
+          echo "Built $AAB_PATH"
 
       - name: Upload PR artifact
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: dejapoo-pr-${{ github.event.number }}
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: ${{ env.APK_PATH }}
 
       # PR artifacts download as a ZIP and require a GitHub login, which is
       # awkward on a phone. Publish the APK as a prerelease as well so it has
@@ -126,23 +145,25 @@ jobs:
           name: PR #${{ github.event.number }} test build
           prerelease: true
           body: |
-            Test build of PR #${{ github.event.number }}. Not a release, and
-            deleted automatically when the PR closes.
+            Test build of PR #${{ github.event.number }}, version
+            ${{ steps.version.outputs.name }} (build
+            ${{ steps.version.outputs.code }}). Not a release, and deleted
+            automatically when the PR closes.
 
             Signed with the CI test keystore, whose fingerprint must be
             registered on the Android OAuth client for Google Sign-In to
             work — see designs/GOOGLE_OAUTH_SETUP.md.
 
             Commit: ${{ github.event.pull_request.head.sha }}
-          files: build/app/outputs/flutter-apk/app-release.apk
+          files: ${{ env.APK_PATH }}
 
       - name: Create release
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ steps.version.outputs.code }}
+          tag_name: v${{ steps.version.outputs.name }}
           name: v${{ steps.version.outputs.name }} (build ${{ steps.version.outputs.code }})
           generate_release_notes: true
           files: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/bundle/release/app-release.aab
+            ${{ env.APK_PATH }}
+            ${{ env.AAB_PATH }}

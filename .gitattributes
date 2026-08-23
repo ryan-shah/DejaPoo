@@ -1,0 +1,4 @@
+# Shell scripts must keep LF endings: CI runs them on Linux, and Git Bash on
+# Windows chokes on CRLF line endings in a script (carriage returns leak into
+# the last token of every line).
+*.sh text eol=lf

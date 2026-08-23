@@ -137,6 +137,26 @@ flutter build appbundle --release   # for Play Store upload
 flutter build apk --release         # for sideloading / manual testing
 ```
 
+Local builds take their version from `pubspec.yaml` (`0.1.0+1`) — that placeholder is **not**
+what ships. CI overrides it via `tool/ci_version.sh`:
+
+- `versionName` = `MAJOR.MINOR` from `pubspec.yaml` + the git commit count (e.g. `0.1.19`)
+- `versionCode` = the git commit count (e.g. `19`)
+
+`versionCode` therefore increases monotonically with every merge, which is what Play requires
+for each upload. To produce a locally-built bundle with the same version CI would use:
+
+```powershell
+bash tool/ci_version.sh   # prints name=<versionName> / code=<versionCode>
+flutter build appbundle --release --build-name=<versionName> --build-number=<versionCode> --dart-define=APP_VERSION=<versionName>
+```
+
+Every merge to `main` also publishes a GitHub Release tagged `v<versionName>` with the
+artifacts attached as `dejapoo-v<versionName>.aab` and `dejapoo-v<versionName>.apk` — the
+`.aab` from the latest release is the file to upload to Play, so a Play upload normally needs
+no local build at all. (Releases before this scheme used tags `build-17` / `build-18` and an
+unversioned `app-release.apk` asset name.)
+
 ## iOS (documentation only — see deviation log in DESIGN.md)
 
 iOS release artifacts cannot be produced on this Windows development machine (no Xcode /
