@@ -34,7 +34,7 @@ design document and phase breakdown.
 - **Quick-log** — FAB long-press opens a compact popup of all 7 Bristol type icons; one tap
   saves an entry instantly (< 5 seconds from launch to logged)
 - **Delete with undo** — swipe left to soft-delete, SnackBar with Undo restores the entry
-- **Reports & analytics** — Day / Week / Month / Year / Custom range selector with prev/next
+- **Reports & analytics** — Day / 7 days / Month / Year / Custom range selector with prev/next
   stepping; Summary tab with stat tiles (total, avg/day, most common type, % healthy, longest
   gap), stacked bar chart by Bristol type, and type-distribution donut; List tab with
   multi-select Bristol type filter chips; all stats update live when entries are logged/edited
@@ -99,7 +99,40 @@ flutter run -d chrome --dart-define=DB_SMOKE=true
 flutter build web --release --base-href /DejaPoo/   # GitHub Pages (PowerShell only)
 flutter build apk --release
 flutter build appbundle --release
+
+# Print the version CI will stamp on this commit (name=0.1.<n>, code=<n>)
+bash tool/ci_version.sh
 ```
+
+### Downloading a build
+
+Every merge to `main` publishes a GitHub Release with the Android artifacts attached:
+**<https://github.com/ryan-shah/DejaPoo/releases/latest>**. The web build is deployed to
+GitHub Pages. Open **Settings → About → Version** in the app to see which build you are on
+(`dev` for local builds).
+
+Each pull request additionally gets a `pr-<N>` prerelease with that PR's test APK, plus a
+web preview at `/DejaPoo/pr-<N>/`; both are deleted automatically when the PR closes.
+
+### Versioning
+
+Versions are derived by [`tool/ci_version.sh`](tool/ci_version.sh) — the single source of
+truth shared by all three build workflows — so no manual bump is needed per release:
+
+| | Value | Source |
+| --- | --- | --- |
+| `versionName` | `0.1.<n>` | `MAJOR.MINOR` from `pubspec.yaml` + git commit count |
+| `versionCode` | `<n>` | git commit count (`git rev-list --count HEAD`) |
+
+The commit count increases on every merge, so **the version changes on every merge**, and
+the release tag `v0.1.N` and build number `N` are always the same number. Release artifacts
+are named `dejapoo-v<version>.apk` / `.aab` (PR builds: `dejapoo-pr<N>-v<version>.apk`).
+
+To start a new series (e.g. `0.2.x`), change the `MAJOR.MINOR` part of `version:` in
+`pubspec.yaml`; the patch and `+build` suffix there are ignored by CI.
+
+Because the version comes from the commit count, all build workflows check out with
+`fetch-depth: 0` — a shallow clone would collapse it to `1`.
 
 ### Google OAuth setup
 

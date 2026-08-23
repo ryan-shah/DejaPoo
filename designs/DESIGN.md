@@ -146,3 +146,13 @@ have. Verification is local-first per user direction; CI runs the native suite o
 2026-07-18 — iOS release artifacts cannot be built on the Windows dev machine. Phase 6 delivers
 complete iOS documentation (icon/splash config, OAuth client setup, build checklist in
 STORE_LISTING.md) but no .ipa artifact. Tracked as dp-y82.
+
+2026-08-23 — The reports "Week" period is now a trailing 7-day window ending on the anchor day
+(default: today), labelled "7 days", rather than PHASE_3_PLAN.md's "Week = Mon–Sun (use existing
+weekStart())". GitHub issue #13: users read "this week" on a health-tracking screen as "the last
+7 days", so a Mon–Sun window shows a 1-day range on Monday and silently drops the trailing
+weekend. Prev/next step the window by ±7 days without re-snapping to a calendar week.
+Consequence: for `ReportRangeKind.last7Days` the `ReportRange.anchor` is the LAST day of the
+period, inverting the "anchor = start of period" convention every other kind follows.
+`weekStart()`/`rollUpByWeek()` in `lib/domain/aggregates.dart` are unchanged — they remain
+chart-bucketing helpers, unrelated to the selected range.
