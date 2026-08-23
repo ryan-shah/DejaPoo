@@ -97,17 +97,21 @@ class SyncServiceNotifier extends _$SyncServiceNotifier {
 
 /// Triggers an initial sync on app open when the user is driveAuthorized.
 ///
-/// Watch this provider from a top-level widget to activate it.
+/// Activated by `ScaffoldWithNavBar`, the app shell widget, which watches it
+/// for the lifetime of the app.
 @Riverpod(keepAlive: true)
 void syncTrigger(Ref ref) {
   final authStatus = ref.watch(googleAuthProvider);
+  // Both branches mutate syncServiceProvider, so both must be deferred out of
+  // this build (the shell watches this provider during its own widget build).
   if (authStatus == AuthStatus.driveAuthorized) {
-    // Use Future.microtask to avoid modifying providers during build.
     Future.microtask(() {
       ref.read(syncServiceProvider.notifier).syncNow();
     });
   } else {
     // User signed out — tear down any existing service.
-    ref.read(syncServiceProvider.notifier).reset();
+    Future.microtask(() {
+      ref.read(syncServiceProvider.notifier).reset();
+    });
   }
 }

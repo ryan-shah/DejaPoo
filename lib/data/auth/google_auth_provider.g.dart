@@ -62,7 +62,7 @@ final class GoogleAuthProvider
   }
 }
 
-String _$googleAuthHash() => r'1dcfd27c06952b2047122fdbd56c7a6835c20310';
+String _$googleAuthHash() => r'ee5f89464992cbb8cbc468fb298f11328e8c0839';
 
 /// Manages Google sign-in state and provides auth clients for googleapis.
 ///
