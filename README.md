@@ -6,6 +6,10 @@ type via representative icons, with rich time-range analytics and Google Drive s
 
 **Targets:** Android · iOS · Web ([live build](https://ryan-shah.github.io/DejaPoo/))
 
+**Install on Android:** grab the APK from the
+[latest release](https://github.com/ryan-shah/DejaPoo/releases/latest) — see
+[`docs/INSTALL_ANDROID.md`](docs/INSTALL_ANDROID.md) for the sideload walkthrough and caveats.
+
 ## Status
 
 Under active development. See [`designs/DESIGN.md`](designs/DESIGN.md) for the authoritative
@@ -112,6 +116,7 @@ lib/
   features/   # Feature modules (home, reports, settings)
   ui/         # Theme tokens, routing, shared widgets (Bristol icons)
 designs/      # DESIGN.md (authoritative), phase status & handoff docs
+docs/         # User-facing docs (Android install guide)
 ```
 
 ## Development notes
