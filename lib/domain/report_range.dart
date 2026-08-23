@@ -1,12 +1,11 @@
-import 'package:dejapoo/domain/aggregates.dart';
 import 'package:flutter/material.dart';
 
 /// The kind of period a [ReportRange] represents.
-enum ReportRangeKind { day, week, month, year, custom }
+enum ReportRangeKind { day, last7Days, month, year, custom }
 
 /// The currently selected time range for the reports screen.
 ///
-/// Day/Week/Month/Year ranges are anchored to a date-only [DateTime] and
+/// Day/7-day/Month/Year ranges are anchored to a date-only [DateTime] and
 /// derive their [firstDay]/[lastDay] from it; Custom ranges are given an
 /// explicit [firstDay]/[lastDay] pair (e.g. from a date picker).
 ///
@@ -32,15 +31,23 @@ class ReportRange {
     );
   }
 
-  /// The Monday-Sunday ISO week containing [anchor].
-  factory ReportRange.week({required DateTime anchor}) {
-    final DateTime start = weekStart(_dateOnly(anchor));
-    final DateTime end = DateTime(start.year, start.month, start.day + 6);
+  /// The trailing 7-day window **ending on** [anchor] (inclusive), i.e.
+  /// `anchor - 6 days` through `anchor`. With the default anchor of today
+  /// this is "the last 7 days", which is what users mean by "this week".
+  ///
+  /// NOTE — anchor semantics are inverted here: for every other kind
+  /// [anchor] is the FIRST day of the period, but for a 7-day window it is
+  /// the LAST day. The window deliberately does not snap to an ISO calendar
+  /// week; `weekStart()` in `aggregates.dart` remains a chart-bucketing
+  /// helper only and is deliberately not used here.
+  factory ReportRange.last7Days({required DateTime anchor}) {
+    final DateTime a = _dateOnly(anchor);
+    final DateTime start = DateTime(a.year, a.month, a.day - 6);
     return ReportRange._(
-      kind: ReportRangeKind.week,
+      kind: ReportRangeKind.last7Days,
       firstDay: start,
-      lastDay: end,
-      anchor: start,
+      lastDay: a,
+      anchor: a,
     );
   }
 
@@ -91,8 +98,13 @@ class ReportRange {
   /// Last inclusive calendar day of the range (date-only, local).
   final DateTime lastDay;
 
-  /// The date-only anchor this range was built from (start of period for
-  /// Day/Week/Month/Year; [firstDay] for Custom).
+  /// The date-only anchor this range was built from.
+  ///
+  /// This is the START of the period for Day/Month/Year (and [firstDay] for
+  /// Custom), but the **END** of the window for
+  /// [ReportRangeKind.last7Days] — a trailing 7-day window is identified by
+  /// the day it ends on. Anything stepping or comparing anchors must respect
+  /// that inversion.
   final DateTime anchor;
 
   static DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
@@ -105,8 +117,8 @@ class ReportRange {
         return ReportRange.day(
           anchor: DateTime(anchor.year, anchor.month, anchor.day + 1),
         );
-      case ReportRangeKind.week:
-        return ReportRange.week(
+      case ReportRangeKind.last7Days:
+        return ReportRange.last7Days(
           anchor: DateTime(anchor.year, anchor.month, anchor.day + 7),
         );
       case ReportRangeKind.month:
@@ -139,8 +151,8 @@ class ReportRange {
         return ReportRange.day(
           anchor: DateTime(anchor.year, anchor.month, anchor.day - 1),
         );
-      case ReportRangeKind.week:
-        return ReportRange.week(
+      case ReportRangeKind.last7Days:
+        return ReportRange.last7Days(
           anchor: DateTime(anchor.year, anchor.month, anchor.day - 7),
         );
       case ReportRangeKind.month:
@@ -166,12 +178,12 @@ class ReportRange {
   }
 
   /// A human-readable label for this range, e.g. "July 2026",
-  /// "Mon Jul 7 - Sun Jul 13", "2026".
+  /// "7/13/2026 – 7/19/2026", "2026".
   String displayLabel(MaterialLocalizations localizations) {
     switch (kind) {
       case ReportRangeKind.day:
         return localizations.formatMediumDate(firstDay);
-      case ReportRangeKind.week:
+      case ReportRangeKind.last7Days:
       case ReportRangeKind.custom:
         return '${localizations.formatShortDate(firstDay)} – '
             '${localizations.formatShortDate(lastDay)}';

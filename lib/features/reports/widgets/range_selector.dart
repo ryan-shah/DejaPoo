@@ -33,8 +33,8 @@ class RangeSelector extends ConsumerWidget {
                   label: Text('Day'),
                 ),
                 ButtonSegment<ReportRangeKind>(
-                  value: ReportRangeKind.week,
-                  label: Text('Week'),
+                  value: ReportRangeKind.last7Days,
+                  label: Text('7 days'),
                 ),
                 ButtonSegment<ReportRangeKind>(
                   value: ReportRangeKind.month,
@@ -103,8 +103,8 @@ class RangeSelector extends ConsumerWidget {
     switch (kind) {
       case ReportRangeKind.day:
         return ReportRange.day(anchor: anchor);
-      case ReportRangeKind.week:
-        return ReportRange.week(anchor: anchor);
+      case ReportRangeKind.last7Days:
+        return ReportRange.last7Days(anchor: anchor);
       case ReportRangeKind.month:
         return ReportRange.month(anchor: anchor);
       case ReportRangeKind.year:
