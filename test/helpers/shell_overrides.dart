@@ -20,15 +20,25 @@ class FakeGoogleAuth extends GoogleAuth {
 /// Overrides that let the app shell be pumped in a widget test: an in-memory
 /// database and a non-plugin auth notifier.
 ///
+/// Pass [extraOverrides] to append screen-specific overrides; appending here
+/// rather than spreading at the call site keeps the list's element type intact,
+/// which `ProviderScope` checks at runtime.
+///
 /// Return type is `dynamic` for the same reason as in `sync_wiring_test.dart`:
-/// `Override` isn't exported from `flutter_riverpod.dart` in riverpod 3.x.
+/// `Override` isn't exported from `flutter_riverpod.dart` in riverpod 3.x — so
+/// [extraOverrides] cannot be given its real type either.
 dynamic shellOverrides(
   AppDatabase db, {
   AuthStatus authStatus = AuthStatus.signedOut,
-}) =>
-    [
-      appDatabaseProvider.overrideWithValue(db),
-      syncStateRepositoryProvider
-          .overrideWithValue(DriftSyncStateRepository(db)),
-      googleAuthProvider.overrideWith(() => FakeGoogleAuth(authStatus)),
-    ];
+  dynamic extraOverrides,
+}) {
+  final overrides = [
+    appDatabaseProvider.overrideWithValue(db),
+    syncStateRepositoryProvider.overrideWithValue(DriftSyncStateRepository(db)),
+    googleAuthProvider.overrideWith(() => FakeGoogleAuth(authStatus)),
+  ];
+  if (extraOverrides != null) {
+    overrides.addAll(extraOverrides);
+  }
+  return overrides;
+}

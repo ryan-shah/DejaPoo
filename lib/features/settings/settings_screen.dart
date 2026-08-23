@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:dejapoo/app_version.dart';
 import 'package:dejapoo/data/auth/google_auth_provider.dart';
 import 'package:dejapoo/data/auth/google_sign_in_button_stub.dart'
     if (dart.library.js_interop) 'package:dejapoo/data/auth/google_sign_in_button_web.dart';
@@ -13,6 +14,8 @@ import 'package:dejapoo/data/notifications/notification_preferences.dart';
 import 'package:dejapoo/data/providers.dart';
 import 'package:dejapoo/data/sync/sync_providers.dart';
 import 'package:dejapoo/data/sync/sync_service.dart';
+import 'package:dejapoo/data/updates/update_models.dart';
+import 'package:dejapoo/data/updates/update_providers.dart';
 import 'package:dejapoo/domain/domain.dart';
 import 'package:dejapoo/ui/theme/theme.dart';
 import 'package:file_picker/file_picker.dart';
@@ -23,14 +26,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const bool _demoMode = bool.fromEnvironment('DEMO_MODE');
-
-/// Build version, injected by every CI build workflow as
-/// `--dart-define=APP_VERSION=<version>`; `dev` for local builds.
-/// See `tool/ci_version.sh` for how the value is derived.
-const String appVersion = String.fromEnvironment(
-  'APP_VERSION',
-  defaultValue: 'dev',
-);
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -941,13 +936,14 @@ class _DemoDataSectionState extends ConsumerState<_DemoDataSection> {
   }
 }
 
-/// Read-only build info, so a user (or a tester on a downloaded artifact) can
-/// tell which build they are running.
-class _AboutSection extends StatelessWidget {
+/// Read-only build info and the update check, so a user (or a tester running a
+/// downloaded artifact) can tell which build they are on and get the newest
+/// one.
+class _AboutSection extends ConsumerWidget {
   const _AboutSection();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -970,7 +966,148 @@ class _AboutSection extends StatelessWidget {
           title: Text('Version'),
           subtitle: Text(appVersion),
         ),
+        const _UpdateTile(),
       ],
+    );
+  }
+}
+
+/// "Check for updates": asks GitHub for the latest release and, when the
+/// running build is behind it, offers a direct download of that release's APK.
+///
+/// The check only ever runs on tap — the app never calls out to GitHub on its
+/// own.
+class _UpdateTile extends ConsumerWidget {
+  const _UpdateTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+    final AsyncValue<UpdateCheckResult?> check =
+        ref.watch(updateCheckProvider);
+    final bool checking = check.isLoading;
+    final UpdateCheckResult? result = check.value;
+    final Object? error = check.hasError ? check.error : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        ListTile(
+          leading: checking
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(_leadingIcon(result, error)),
+          title: const Text('Check for updates'),
+          subtitle: Text(
+            _subtitle(checking: checking, result: result, error: error),
+            style: error == null
+                ? null
+                : TextStyle(color: theme.colorScheme.error),
+          ),
+          enabled: !checking,
+          onTap: () => ref.read(updateCheckProvider.notifier).check(),
+        ),
+        if (result != null && result.status != UpdateStatus.upToDate)
+          _DownloadRow(result.latest),
+      ],
+    );
+  }
+
+  IconData _leadingIcon(UpdateCheckResult? result, Object? error) {
+    if (error != null) return Icons.error_outline;
+    if (result == null) return Icons.system_update_alt;
+    return switch (result.status) {
+      UpdateStatus.updateAvailable => Icons.new_releases_outlined,
+      UpdateStatus.upToDate => Icons.check_circle_outline,
+      UpdateStatus.unknownCurrentVersion => Icons.system_update_alt,
+    };
+  }
+
+  String _subtitle({
+    required bool checking,
+    required UpdateCheckResult? result,
+    required Object? error,
+  }) {
+    if (checking) return 'Checking GitHub…';
+    if (error != null) {
+      return error is UpdateCheckException
+          ? error.message
+          : 'Update check failed. Try again.';
+    }
+    if (result == null) {
+      return 'See whether a newer release is available';
+    }
+    return switch (result.status) {
+      UpdateStatus.updateAvailable =>
+        'Version ${result.latest.version} is available',
+      UpdateStatus.upToDate =>
+        'Up to date — ${result.latest.version} is the latest release',
+      // A local `dev` build has no version to compare against, so report the
+      // latest release and let the user decide.
+      UpdateStatus.unknownCurrentVersion =>
+        'Latest release is ${result.latest.version}',
+    };
+  }
+}
+
+/// The download action for [release] — the APK itself when the release has
+/// one, otherwise its GitHub page.
+class _DownloadRow extends StatelessWidget {
+  const _DownloadRow(this.release);
+
+  final AppRelease release;
+
+  Future<void> _open(BuildContext context, String url) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    bool opened = false;
+    try {
+      opened = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+    } on Exception {
+      opened = false;
+    }
+    if (!opened) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not open $url')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool hasApk = release.apkUrl != null;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        Spacing.md,
+        0,
+        Spacing.md,
+        Spacing.sm,
+      ),
+      child: Wrap(
+        spacing: Spacing.sm,
+        runSpacing: Spacing.xs,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: <Widget>[
+          FilledButton.icon(
+            onPressed: () => _open(context, release.downloadUrl),
+            icon: Icon(hasApk ? Icons.download : Icons.open_in_new),
+            label: Text(
+              hasApk
+                  ? 'Download ${release.tag} APK'
+                  : 'Open ${release.tag} on GitHub',
+            ),
+          ),
+          TextButton(
+            onPressed: () => _open(context, release.releaseUrl),
+            child: const Text('Release notes'),
+          ),
+        ],
+      ),
     );
   }
 }
