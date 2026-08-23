@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dejapoo/domain/aggregates.dart';
 import 'package:dejapoo/domain/bristol_type.dart';
 import 'package:dejapoo/domain/report_range.dart';
@@ -7,6 +9,7 @@ import 'package:dejapoo/features/reports/widgets/charts/stacked_type_bar_chart.d
 import 'package:dejapoo/features/reports/widgets/charts/type_donut_chart.dart';
 import 'package:dejapoo/features/reports/widgets/range_selector.dart';
 import 'package:dejapoo/features/reports/widgets/reports_list_tab.dart';
+import 'package:dejapoo/features/reports/widgets/share_report_sheet.dart';
 import 'package:dejapoo/features/reports/widgets/stat_tiles.dart';
 import 'package:dejapoo/ui/theme/theme.dart';
 import 'package:dejapoo/ui/widgets/error_retry_widget.dart';
@@ -16,6 +19,55 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// A span of days above which the bar chart rolls up by month instead of
 /// showing one bar per day (keeps the x-axis readable).
 const int _maxDayBucketSpan = 62;
+
+/// Chart-ready per-period counts plus their matching x-axis labels.
+typedef _BucketedCounts = ({List<PeriodTypeCount> buckets, List<String> labels});
+
+/// Whether [range] is long enough that the bar chart should roll up by month
+/// instead of showing one bar per day.
+bool _useMonthBars(ReportRange range) {
+  if (range.kind == ReportRangeKind.year) {
+    return true;
+  }
+  if (range.kind == ReportRangeKind.custom) {
+    final int spanDays = range.lastDay.difference(range.firstDay).inDays + 1;
+    return spanDays > _maxDayBucketSpan;
+  }
+  return false;
+}
+
+/// Buckets [dailyCounts] the way the on-screen chart does for [range] — by
+/// day for short ranges, by month for long ones — and builds the matching
+/// x-axis labels. Shared by the summary tab and the share card so both always
+/// show the same chart.
+_BucketedCounts _bucketCountsForRange(
+  ReportRange range,
+  List<DailyTypeCount> dailyCounts,
+) {
+  if (_useMonthBars(range)) {
+    final List<PeriodTypeCount> monthly = rollUpByMonth(dailyCounts);
+    return (buckets: monthly, labels: _monthLabels(monthly));
+  }
+  final List<PeriodTypeCount> daily = <PeriodTypeCount>[
+    for (final DailyTypeCount d in dailyCounts)
+      PeriodTypeCount(periodStart: d.day, type: d.type, count: d.count),
+  ];
+  return (buckets: daily, labels: _dayLabels(daily));
+}
+
+List<DateTime> _sortedPeriodStarts(List<PeriodTypeCount> buckets) =>
+    <DateTime>{for (final PeriodTypeCount b in buckets) b.periodStart}.toList()
+      ..sort();
+
+List<String> _dayLabels(List<PeriodTypeCount> buckets) => <String>[
+      for (final DateTime day in _sortedPeriodStarts(buckets))
+        '${day.month}/${day.day}',
+    ];
+
+List<String> _monthLabels(List<PeriodTypeCount> buckets) => <String>[
+      for (final DateTime month in _sortedPeriodStarts(buckets))
+        '${month.month}/${month.year % 100}',
+    ];
 
 /// Top-level reports screen: a range selector, a Summary/List tab bar, and
 /// the corresponding tab content.
@@ -27,7 +79,10 @@ class ReportsScreen extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        appBar: AppBar(title: const Text('Reports')),
+        appBar: AppBar(
+          title: const Text('Reports'),
+          actions: const <Widget>[_ShareAction()],
+        ),
         body: const Column(
           children: <Widget>[
             RangeSelector(),
@@ -120,18 +175,13 @@ class _BarChartSection extends ConsumerWidget {
 
     return dailyCountsAsync.when(
       data: (List<DailyTypeCount> dailyCounts) {
-        final bool useMonthBars = _useMonthBars(range);
-        if (useMonthBars) {
-          final List<PeriodTypeCount> monthly = rollUpByMonth(dailyCounts);
-          return StackedTypeBarChart(
-            buckets: monthly,
-            periodLabels: _monthLabels(monthly),
-          );
-        }
-        final List<PeriodTypeCount> daily = _toPeriodTypeCounts(dailyCounts);
+        final _BucketedCounts bucketed = _bucketCountsForRange(
+          range,
+          dailyCounts,
+        );
         return StackedTypeBarChart(
-          buckets: daily,
-          periodLabels: _dayLabels(daily),
+          buckets: bucketed.buckets,
+          periodLabels: bucketed.labels,
         );
       },
       loading: () => const _CenteredLoading(),
@@ -141,45 +191,69 @@ class _BarChartSection extends ConsumerWidget {
       ),
     );
   }
+}
 
-  bool _useMonthBars(ReportRange range) {
-    if (range.kind == ReportRangeKind.year) {
-      return true;
-    }
-    if (range.kind == ReportRangeKind.custom) {
-      final int spanDays =
-          range.lastDay.difference(range.firstDay).inDays + 1;
-      return spanDays > _maxDayBucketSpan;
-    }
-    return false;
-  }
+/// AppBar action that opens the share-as-image sheet for the selected period.
+///
+/// Disabled until every provider the share card needs has data, so the card
+/// can never be built from a half-loaded (or errored) snapshot.
+class _ShareAction extends ConsumerWidget {
+  const _ShareAction();
 
-  List<PeriodTypeCount> _toPeriodTypeCounts(List<DailyTypeCount> daily) {
-    return <PeriodTypeCount>[
-      for (final DailyTypeCount d in daily)
-        PeriodTypeCount(periodStart: d.day, type: d.type, count: d.count),
-    ];
-  }
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ReportRange range = ref.watch(selectedReportRangeProvider);
+    final AsyncValue<ReportStats> statsAsync = ref.watch(reportStatsProvider);
+    final AsyncValue<Map<BristolType, int>> distributionAsync = ref.watch(
+      reportTypeDistributionProvider,
+    );
+    final AsyncValue<List<DailyTypeCount>> dailyCountsAsync = ref.watch(
+      reportDailyTypeCountsProvider,
+    );
 
-  List<String> _dayLabels(List<PeriodTypeCount> buckets) {
-    final List<DateTime> periodStarts =
-        <DateTime>{for (final PeriodTypeCount b in buckets) b.periodStart}
-            .toList()
-          ..sort();
-    return <String>[
-      for (final DateTime day in periodStarts) '${day.month}/${day.day}',
-    ];
-  }
+    final bool loadingOrError = statsAsync.isLoading ||
+        statsAsync.hasError ||
+        distributionAsync.isLoading ||
+        distributionAsync.hasError ||
+        dailyCountsAsync.isLoading ||
+        dailyCountsAsync.hasError;
 
-  List<String> _monthLabels(List<PeriodTypeCount> buckets) {
-    final List<DateTime> periodStarts =
-        <DateTime>{for (final PeriodTypeCount b in buckets) b.periodStart}
-            .toList()
-          ..sort();
-    return <String>[
-      for (final DateTime month in periodStarts)
-        '${month.month}/${month.year % 100}',
-    ];
+    final ReportStats? stats = statsAsync.value;
+    final Map<BristolType, int>? distribution = distributionAsync.value;
+    final List<DailyTypeCount>? dailyCounts = dailyCountsAsync.value;
+    final bool ready = !loadingOrError &&
+        stats != null &&
+        distribution != null &&
+        dailyCounts != null;
+
+    return IconButton(
+      icon: const Icon(Icons.ios_share),
+      tooltip: 'Share this period as an image',
+      onPressed: !ready
+          ? null
+          : () {
+              final _BucketedCounts bucketed = _bucketCountsForRange(
+                range,
+                dailyCounts,
+              );
+              unawaited(
+                ShareReportSheet.show(
+                  context,
+                  rangeLabel: range.displayLabel(
+                    MaterialLocalizations.of(context),
+                  ),
+                  firstDay: range.firstDay,
+                  lastDay: range.lastDay,
+                  generatedOn: DateTime.now(),
+                  stats: stats,
+                  distribution: distribution,
+                  buckets: bucketed.buckets,
+                  periodLabels: bucketed.labels,
+                  showBarChart: range.kind != ReportRangeKind.day,
+                ),
+              );
+            },
+    );
   }
 }
 

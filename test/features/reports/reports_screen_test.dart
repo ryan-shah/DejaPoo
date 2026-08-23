@@ -3,6 +3,8 @@ import 'package:dejapoo/data/providers.dart';
 import 'package:dejapoo/data/repositories/drift_bowel_movement_repository.dart';
 import 'package:dejapoo/domain/domain.dart';
 import 'package:dejapoo/features/reports/reports_screen.dart';
+import 'package:dejapoo/features/reports/widgets/report_share_card.dart';
+import 'package:dejapoo/features/reports/widgets/share_report_sheet.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -138,6 +140,38 @@ void main() {
     Navigator.of(
       tester.element(find.byType(DateRangePickerDialog)),
     ).pop();
+    await tester.pumpAndSettle();
+
+    await driftTeardown(tester);
+  });
+
+  testWidgets('app bar share action opens the share preview sheet',
+      (WidgetTester tester) async {
+    await repo.create(
+      occurredAt: DateTime.now(),
+      bristolType: BristolType.type4,
+    );
+
+    await pumpReportsScreen(tester);
+
+    final Finder shareButton = find.widgetWithIcon(
+      IconButton,
+      Icons.ios_share,
+    );
+    expect(shareButton, findsOneWidget);
+    expect(
+      tester.widget<IconButton>(shareButton).onPressed,
+      isNotNull,
+    );
+
+    await tester.tap(shareButton);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ShareReportSheet), findsOneWidget);
+    expect(find.byType(ReportShareCard), findsOneWidget);
+
+    // Dismiss the sheet so teardown doesn't leave its route timers pending.
+    Navigator.of(tester.element(find.byType(ShareReportSheet))).pop();
     await tester.pumpAndSettle();
 
     await driftTeardown(tester);
