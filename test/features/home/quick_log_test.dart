@@ -60,8 +60,9 @@ void main() {
 
     // All 7 Bristol type icons should be present (via semantic labels)
     for (int i = 1; i <= 7; i++) {
+      final BristolType type = BristolType.fromNumber(i);
       expect(
-        find.bySemanticsLabel('Log Bristol type $i'),
+        find.bySemanticsLabel('Log Bristol type $i: ${type.label}'),
         findsOneWidget,
       );
     }
@@ -81,7 +82,9 @@ void main() {
     await tester.pumpAndSettle();
 
     // Tap Bristol type 4 icon
-    await tester.tap(find.bySemanticsLabel('Log Bristol type 4'));
+    await tester.tap(
+      find.bySemanticsLabel('Log Bristol type 4: ${BristolType.type4.label}'),
+    );
     await tester.pumpAndSettle();
 
     // Popup should be dismissed

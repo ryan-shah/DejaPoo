@@ -9,6 +9,7 @@ import 'package:dejapoo/features/reports/widgets/range_selector.dart';
 import 'package:dejapoo/features/reports/widgets/reports_list_tab.dart';
 import 'package:dejapoo/features/reports/widgets/stat_tiles.dart';
 import 'package:dejapoo/ui/theme/theme.dart';
+import 'package:dejapoo/ui/widgets/error_retry_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -70,8 +71,10 @@ class _SummaryTab extends ConsumerWidget {
         statsAsync.when(
           data: (ReportStats stats) => StatTiles(stats: stats),
           loading: () => const _CenteredLoading(),
-          error: (Object error, StackTrace stackTrace) =>
-              _ErrorMessage(error: error),
+          error: (Object error, StackTrace stackTrace) => ErrorRetryWidget(
+            error: error,
+            onRetry: () => ref.invalidate(reportStatsProvider),
+          ),
         ),
         const SizedBox(height: Spacing.lg),
         if (range.kind != ReportRangeKind.day) ...<Widget>[
@@ -92,8 +95,10 @@ class _SummaryTab extends ConsumerWidget {
           data: (Map<BristolType, int> distribution) =>
               TypeDonutChart(distribution: distribution),
           loading: () => const _CenteredLoading(),
-          error: (Object error, StackTrace stackTrace) =>
-              _ErrorMessage(error: error),
+          error: (Object error, StackTrace stackTrace) => ErrorRetryWidget(
+            error: error,
+            onRetry: () => ref.invalidate(reportTypeDistributionProvider),
+          ),
         ),
       ],
     );
@@ -130,8 +135,10 @@ class _BarChartSection extends ConsumerWidget {
         );
       },
       loading: () => const _CenteredLoading(),
-      error: (Object error, StackTrace stackTrace) =>
-          _ErrorMessage(error: error),
+      error: (Object error, StackTrace stackTrace) => ErrorRetryWidget(
+        error: error,
+        onRetry: () => ref.invalidate(reportDailyTypeCountsProvider),
+      ),
     );
   }
 
@@ -184,25 +191,6 @@ class _CenteredLoading extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: Spacing.xl),
       child: Center(child: CircularProgressIndicator()),
-    );
-  }
-}
-
-class _ErrorMessage extends StatelessWidget {
-  const _ErrorMessage({required this.error});
-
-  final Object error;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: Spacing.xl),
-      child: Center(
-        child: Text(
-          'Something went wrong: $error',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-      ),
     );
   }
 }

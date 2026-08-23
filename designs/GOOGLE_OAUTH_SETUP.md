@@ -64,6 +64,20 @@ review if the app were published, but Testing mode avoids this entirely.
 OAuth client ID with the **release keystore** SHA-1. The debug and release keystores
 have different fingerprints, so both client IDs are needed.
 
+After generating the release keystore (see `designs/STORE_LISTING.md` for the
+`keytool -genkeypair` command and the `key.properties` layout expected by
+`android/app/build.gradle.kts`), extract its SHA-1 fingerprint and add it here:
+
+```bash
+keytool -list -v -keystore /path/to/your/release.keystore -alias your-key-alias
+```
+
+If this SHA-1 is not registered with an Android OAuth client ID, Google Sign-In
+(and therefore Drive sync) will fail silently on release builds even though it
+works fine in debug — the release keystore's fingerprint doesn't match any
+registered client. Re-run `./gradlew signingReport` from `android/` after adding
+`key.properties` to confirm which SHA-1 the release build type is actually using.
+
 **Note:** No code changes are needed for Android. The `google_sign_in` plugin
 matches the app's package name and signing certificate against the registered
 OAuth client IDs automatically.

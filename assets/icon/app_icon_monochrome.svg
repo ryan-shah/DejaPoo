@@ -1,0 +1,16 @@
+<!-- Android 13+ themed-icon layer. The launcher tints this to the wallpaper palette,
+     so every shape is one opaque colour; ring and capsule never touch, so the mark
+     still reads once flattened. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <g transform="translate(24 24) scale(1.1) translate(-24 -24)" fill="#000000">
+    <circle cx="24.000" cy="8.000" r="3.075"/>
+    <circle cx="36.509" cy="14.024" r="2.05"/>
+    <circle cx="39.599" cy="27.560" r="2.05"/>
+    <circle cx="30.942" cy="38.415" r="2.05"/>
+    <circle cx="17.058" cy="38.415" r="2.05"/>
+    <circle cx="8.401" cy="27.560" r="2.05"/>
+    <circle cx="11.491" cy="14.024" r="2.05"/>
+  <rect x="15" y="20.6" width="18" height="6.8" rx="3.4" ry="3.4"
+        transform="rotate(-25 24 24)"/>
+  </g>
+</svg>

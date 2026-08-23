@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:dejapoo/data/providers.dart';
+import 'package:dejapoo/data/sync/sync_providers.dart';
 import 'package:dejapoo/domain/domain.dart';
 import 'package:dejapoo/features/home/providers/timeline_providers.dart';
 import 'package:dejapoo/features/home/widgets/entry_sheet.dart';
@@ -9,6 +10,7 @@ import 'package:dejapoo/features/home/widgets/quick_log_popup.dart';
 import 'package:dejapoo/features/home/widgets/timeline_entry_tile.dart';
 import 'package:dejapoo/features/home/widgets/today_header.dart';
 import 'package:dejapoo/ui/theme/tokens.dart';
+import 'package:dejapoo/ui/widgets/error_retry_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -36,8 +38,9 @@ class HomeScreen extends ConsumerWidget {
       ),
       body: timelineAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (Object error, StackTrace stack) => Center(
-          child: Text('Something went wrong: $error'),
+        error: (Object error, StackTrace stack) => ErrorRetryWidget(
+          error: error,
+          onRetry: () => ref.invalidate(timelineProvider),
         ),
         data: (List<BowelMovement> entries) {
           if (entries.isEmpty) {
@@ -46,11 +49,19 @@ class HomeScreen extends ConsumerWidget {
           return _TimelineList(entries: entries, summary: summary);
         },
       ),
-      floatingActionButton: GestureDetector(
-        onLongPress: () => _quickLog(context, ref),
-        child: FloatingActionButton(
-          onPressed: () => showEntrySheet(context),
-          child: const Icon(Icons.add),
+      // NOTE: intentionally not using FloatingActionButton.tooltip here — its
+      // Tooltip wrapper installs its own long-press gesture recognizer, which
+      // competes with onLongPress below in the gesture arena and can swallow
+      // the quick-log long-press. Semantics gives the same accessibility
+      // label without a competing recognizer.
+      floatingActionButton: Semantics(
+        label: 'Add new entry. Long press to quick log.',
+        child: GestureDetector(
+          onLongPress: () => _quickLog(context, ref),
+          child: FloatingActionButton(
+            onPressed: () => showEntrySheet(context),
+            child: const Icon(Icons.add),
+          ),
         ),
       ),
     );
@@ -170,6 +181,7 @@ Future<void> _quickLog(BuildContext context, WidgetRef ref) async {
   final BowelMovementRepository repo =
       ref.read(bowelMovementRepositoryProvider);
   await repo.create(occurredAt: DateTime.now(), bristolType: type);
+  ref.read(syncServiceProvider.notifier).scheduleDebouncedSync();
 
   if (!context.mounted) return;
   ScaffoldMessenger.of(context)
@@ -307,7 +319,10 @@ class _DismissibleEntryTile extends StatelessWidget {
         final BowelMovement deletedEntry = entry;
         final BowelMovementRepository repo =
             ref.read(bowelMovementRepositoryProvider);
+        final SyncServiceNotifier syncNotifier =
+            ref.read(syncServiceProvider.notifier);
         repo.softDelete(entry.id);
+        syncNotifier.scheduleDebouncedSync();
 
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
@@ -318,6 +333,7 @@ class _DismissibleEntryTile extends StatelessWidget {
                 label: 'Undo',
                 onPressed: () {
                   repo.update(deletedEntry);
+                  syncNotifier.scheduleDebouncedSync();
                 },
               ),
             ),

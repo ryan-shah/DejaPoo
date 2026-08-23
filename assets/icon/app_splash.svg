@@ -1,0 +1,18 @@
+<!-- Legacy (pre-Android-12) and web splash: the icon on a rounded sage field with
+     transparent surroundings, so it reads as the app icon presented on the splash
+     background instead of a full-bleed green tile. Works on both the light
+     (#FAFAF7) and dark (#1A1F1A) splash colours. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <rect width="48" height="48" rx="10.8" ry="10.8" fill="#6FAE8D"/>
+  <g fill="#FAFAF7">
+    <circle cx="24.000" cy="8.000" r="3.075"/>
+    <circle cx="36.509" cy="14.024" r="2.05"/>
+    <circle cx="39.599" cy="27.560" r="2.05"/>
+    <circle cx="30.942" cy="38.415" r="2.05"/>
+    <circle cx="17.058" cy="38.415" r="2.05"/>
+    <circle cx="8.401" cy="27.560" r="2.05"/>
+    <circle cx="11.491" cy="14.024" r="2.05"/>
+  </g>
+  <rect x="15" y="20.6" width="18" height="6.8" rx="3.4" ry="3.4" fill="#3E6B48"
+        transform="rotate(-25 24 24)"/>
+</svg>

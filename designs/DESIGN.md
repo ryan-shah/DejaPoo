@@ -142,3 +142,7 @@ on CI its harness cannot serve assets so the wasm binary cannot be loaded. The g
 (`lib/data/db/db_smoke_probe.dart`), which exercises the full production web path (compiled
 drift worker, WASM sqlite, real storage selection) — strictly more than the unit test would
 have. Verification is local-first per user direction; CI runs the native suite only.
+
+2026-07-18 — iOS release artifacts cannot be built on the Windows dev machine. Phase 6 delivers
+complete iOS documentation (icon/splash config, OAuth client setup, build checklist in
+STORE_LISTING.md) but no .ipa artifact. Tracked as dp-y82.

@@ -10,6 +10,7 @@ import 'package:dejapoo/data/fixtures/fixture_generator.dart';
 import 'package:dejapoo/data/import/drive_picker_stub.dart'
     if (dart.library.js_interop) 'package:dejapoo/data/import/drive_picker_web.dart';
 import 'package:dejapoo/data/import/import_models.dart';
+import 'package:dejapoo/data/notifications/notification_preferences.dart';
 import 'package:dejapoo/data/providers.dart';
 import 'package:dejapoo/data/sync/sync_providers.dart';
 import 'package:dejapoo/data/sync/sync_service.dart';
@@ -33,12 +34,13 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
-        children: const <Widget>[
-          _AccountSection(),
-          _SyncSection(),
-          _ImportSection(),
-          _ExportSection(),
-          if (_demoMode) _DemoDataSection(),
+        children: <Widget>[
+          const _AccountSection(),
+          const _SyncSection(),
+          if (!kIsWeb) const _NotificationSection(),
+          const _ImportSection(),
+          const _ExportSection(),
+          if (_demoMode) const _DemoDataSection(),
         ],
       ),
     );
@@ -331,6 +333,100 @@ class _SyncSection extends ConsumerWidget {
   }
 }
 
+class _NotificationSection extends ConsumerWidget {
+  const _NotificationSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<NotificationPreferences> prefsAsync =
+        ref.watch(notificationPreferencesProvider);
+
+    return prefsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (NotificationPreferences prefs) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                Spacing.md,
+                Spacing.md,
+                Spacing.md,
+                Spacing.xs,
+              ),
+              child: Text(
+                'Reminders',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+              ),
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.notifications_outlined),
+              title: const Text("Log today's movements"),
+              subtitle: const Text('Daily local reminder notification'),
+              value: prefs.enabled,
+              onChanged: (bool value) => _handleToggle(context, ref, value),
+            ),
+            if (prefs.enabled)
+              ListTile(
+                leading: const Icon(Icons.schedule),
+                title: const Text('Reminder time'),
+                subtitle: Text(_formatTime(prefs.hour, prefs.minute)),
+                onTap: () => _pickTime(context, ref, prefs),
+              ),
+            const Divider(),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _handleToggle(
+    BuildContext context,
+    WidgetRef ref,
+    bool value,
+  ) async {
+    final bool success = await ref
+        .read(notificationPreferencesProvider.notifier)
+        .setEnabled(value);
+    if (!success && value && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Notification permission denied. Enable it in system settings '
+            'to receive reminders.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _pickTime(
+    BuildContext context,
+    WidgetRef ref,
+    NotificationPreferences prefs,
+  ) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: prefs.hour, minute: prefs.minute),
+    );
+    if (picked == null) return;
+    await ref
+        .read(notificationPreferencesProvider.notifier)
+        .setTime(picked.hour, picked.minute);
+  }
+
+  String _formatTime(int hour, int minute) {
+    final TimeOfDay time = TimeOfDay(hour: hour, minute: minute);
+    final int hourOfPeriod =
+        time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final String period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$hourOfPeriod:${time.minute.toString().padLeft(2, '0')} $period';
+  }
+}
+
 class _ImportSection extends ConsumerStatefulWidget {
   const _ImportSection();
 
@@ -372,6 +468,7 @@ class _ImportSectionState extends ConsumerState<_ImportSection> {
       final summary = await ref
           .read(importServiceProvider)
           .importBytes(result.bytes, result.fileName);
+      ref.read(syncServiceProvider.notifier).scheduleDebouncedSync();
 
       if (!mounted) return;
       final bool failed = summary.insertedCount == 0 && summary.hasErrors;
@@ -436,6 +533,7 @@ class _ImportSectionState extends ConsumerState<_ImportSection> {
       summary = await ref
           .read(importServiceProvider)
           .importBytes(bytes, file.name);
+      ref.read(syncServiceProvider.notifier).scheduleDebouncedSync();
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -749,6 +847,7 @@ class _DemoDataSectionState extends ConsumerState<_DemoDataSection> {
         lastDay: now,
       );
       await repo.insertAll(fixtures);
+      ref.read(syncServiceProvider.notifier).scheduleDebouncedSync();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Loaded ${fixtures.length} sample entries')),
@@ -767,6 +866,7 @@ class _DemoDataSectionState extends ConsumerState<_DemoDataSection> {
       final BowelMovementRepository repo =
           ref.read(bowelMovementRepositoryProvider);
       await repo.deleteAll();
+      ref.read(syncServiceProvider.notifier).scheduleDebouncedSync();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('All entries removed')),

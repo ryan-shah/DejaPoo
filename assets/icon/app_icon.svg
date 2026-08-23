@@ -1,0 +1,22 @@
+<!-- DejaPoo app icon — artwork of record.
+     Bristol vocabulary (see assets/icons/bristol_type_*.svg): flat filled shapes,
+     no strokes, no gradients, per-shape rotation. Seven ring dots = the seven
+     Bristol types / a week of entries; the enlarged top dot marks today.
+     Ring radius 16.0 puts the widest point (the today dot) at 79.5% of the icon
+     width, inside the 80% PWA maskable safe circle and the Android 108dp viewport.
+     Palette from lib/ui/theme/app_colors.dart.
+     Rasterise with: flutter test tool/render_icons.dart -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <rect width="48" height="48" fill="#6FAE8D"/>
+  <g fill="#FAFAF7">
+    <circle cx="24.000" cy="8.000" r="3.075"/>
+    <circle cx="36.509" cy="14.024" r="2.05"/>
+    <circle cx="39.599" cy="27.560" r="2.05"/>
+    <circle cx="30.942" cy="38.415" r="2.05"/>
+    <circle cx="17.058" cy="38.415" r="2.05"/>
+    <circle cx="8.401" cy="27.560" r="2.05"/>
+    <circle cx="11.491" cy="14.024" r="2.05"/>
+  </g>
+  <rect x="15" y="20.6" width="18" height="6.8" rx="3.4" ry="3.4" fill="#3E6B48"
+        transform="rotate(-25 24 24)"/>
+</svg>
