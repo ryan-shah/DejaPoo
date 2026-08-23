@@ -46,7 +46,9 @@ design document and phase breakdown.
   devices; manual "Sync now" plus auto-sync on app open and debounced sync after every local
   mutation when authorized
 - **Export** — export all entries as XLSX (year-based sheets matching the import layout) or CSV;
-  web uses browser download, mobile uses the native share sheet
+  the Reports screen can also share the currently selected period as a PNG image (a summary card
+  with the stat tiles and both charts), previewed before it is sent. Web uses browser download,
+  mobile uses the native share sheet
 - **Daily reminders** — optional local notification at a user-chosen time ("Log today's movements"),
   with Android 13+ permission handling; hidden on web
 - **Responsive layout** — NavigationRail at 840dp+ for tablets/desktop, NavigationBar on phone

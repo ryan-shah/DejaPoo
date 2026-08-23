@@ -3,9 +3,8 @@ import 'dart:convert';
 import 'package:dejapoo/data/auth/google_auth_provider.dart';
 import 'package:dejapoo/data/auth/google_sign_in_button_stub.dart'
     if (dart.library.js_interop) 'package:dejapoo/data/auth/google_sign_in_button_web.dart';
-import 'package:dejapoo/data/export/export_download_stub.dart'
-    if (dart.library.js_interop) 'package:dejapoo/data/export/export_download_web.dart';
 import 'package:dejapoo/data/export/export_providers.dart';
+import 'package:dejapoo/data/export/file_delivery.dart';
 import 'package:dejapoo/data/fixtures/fixture_generator.dart';
 import 'package:dejapoo/data/import/drive_picker_stub.dart'
     if (dart.library.js_interop) 'package:dejapoo/data/import/drive_picker_web.dart';
@@ -21,7 +20,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const bool _demoMode = bool.fromEnvironment('DEMO_MODE');
@@ -735,7 +733,7 @@ class _ExportSectionState extends ConsumerState<_ExportSection> {
       final Uint8List bytes =
           await ref.read(exportServiceProvider).exportXlsx();
       if (!mounted) return;
-      await _deliverFile(
+      await deliverFile(
         bytes,
         'dejapoo_export.xlsx',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -757,7 +755,7 @@ class _ExportSectionState extends ConsumerState<_ExportSection> {
       final String csv = await ref.read(exportServiceProvider).exportCsv();
       if (!mounted) return;
       final Uint8List bytes = Uint8List.fromList(utf8.encode(csv));
-      await _deliverFile(bytes, 'dejapoo_export.csv', 'text/csv');
+      await deliverFile(bytes, 'dejapoo_export.csv', 'text/csv');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -766,20 +764,6 @@ class _ExportSectionState extends ConsumerState<_ExportSection> {
       }
     } finally {
       if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _deliverFile(
-    Uint8List bytes,
-    String fileName,
-    String mimeType,
-  ) async {
-    if (kIsWeb) {
-      downloadFile(bytes, fileName, mimeType);
-    } else {
-      await Share.shareXFiles(
-        <XFile>[XFile.fromData(bytes, name: fileName, mimeType: mimeType)],
-      );
     }
   }
 
