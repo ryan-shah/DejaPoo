@@ -46,7 +46,7 @@ void main() {
     await pumpReportsScreen(tester);
 
     expect(find.text('Day'), findsOneWidget);
-    expect(find.text('Week'), findsOneWidget);
+    expect(find.text('7 days'), findsOneWidget);
     expect(find.text('Month'), findsOneWidget);
     expect(find.text('Year'), findsOneWidget);
     expect(find.text('Custom'), findsOneWidget);
@@ -101,7 +101,7 @@ void main() {
     final String monthLabel = localizations.formatMonthYear(now);
     expect(find.text(monthLabel), findsOneWidget);
 
-    await tester.tap(find.text('Week'));
+    await tester.tap(find.text('7 days'));
     await tester.pumpAndSettle();
 
     expect(find.text(monthLabel), findsNothing);

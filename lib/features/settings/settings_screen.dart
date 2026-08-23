@@ -24,6 +24,14 @@ import 'package:url_launcher/url_launcher.dart';
 
 const bool _demoMode = bool.fromEnvironment('DEMO_MODE');
 
+/// Build version, injected by every CI build workflow as
+/// `--dart-define=APP_VERSION=<version>`; `dev` for local builds.
+/// See `tool/ci_version.sh` for how the value is derived.
+const String appVersion = String.fromEnvironment(
+  'APP_VERSION',
+  defaultValue: 'dev',
+);
+
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -39,6 +47,7 @@ class SettingsScreen extends StatelessWidget {
           _ImportSection(),
           _ExportSection(),
           if (_demoMode) _DemoDataSection(),
+          _AboutSection(),
         ],
       ),
     );
@@ -927,6 +936,40 @@ class _DemoDataSectionState extends ConsumerState<_DemoDataSection> {
           },
         ),
         const Divider(),
+      ],
+    );
+  }
+}
+
+/// Read-only build info, so a user (or a tester on a downloaded artifact) can
+/// tell which build they are running.
+class _AboutSection extends StatelessWidget {
+  const _AboutSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.md,
+            Spacing.md,
+            Spacing.md,
+            Spacing.xs,
+          ),
+          child: Text(
+            'About',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+          ),
+        ),
+        const ListTile(
+          leading: Icon(Icons.info_outline),
+          title: Text('Version'),
+          subtitle: Text(appVersion),
+        ),
       ],
     );
   }

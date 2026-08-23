@@ -85,20 +85,23 @@ abstract class _$SyncServiceNotifier extends $Notifier<SyncState> {
 
 /// Triggers an initial sync on app open when the user is driveAuthorized.
 ///
-/// Watch this provider from a top-level widget to activate it.
+/// Activated by `ScaffoldWithNavBar`, the app shell widget, which watches it
+/// for the lifetime of the app.
 
 @ProviderFor(syncTrigger)
 final syncTriggerProvider = SyncTriggerProvider._();
 
 /// Triggers an initial sync on app open when the user is driveAuthorized.
 ///
-/// Watch this provider from a top-level widget to activate it.
+/// Activated by `ScaffoldWithNavBar`, the app shell widget, which watches it
+/// for the lifetime of the app.
 
 final class SyncTriggerProvider extends $FunctionalProvider<void, void, void>
     with $Provider<void> {
   /// Triggers an initial sync on app open when the user is driveAuthorized.
   ///
-  /// Watch this provider from a top-level widget to activate it.
+  /// Activated by `ScaffoldWithNavBar`, the app shell widget, which watches it
+  /// for the lifetime of the app.
   SyncTriggerProvider._()
     : super(
         from: null,
@@ -132,4 +135,4 @@ final class SyncTriggerProvider extends $FunctionalProvider<void, void, void>
   }
 }
 
-String _$syncTriggerHash() => r'61ab9e20f05b33aac703455f6278f6d87bb51a5a';
+String _$syncTriggerHash() => r'0ea8045d197790e7f4f1e989a7c0cb2f3693fcde';

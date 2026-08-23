@@ -4,6 +4,7 @@ import 'dart:collection';
 import 'package:dejapoo/data/providers.dart';
 import 'package:dejapoo/data/sync/sync_providers.dart';
 import 'package:dejapoo/domain/domain.dart';
+import 'package:dejapoo/features/home/install_prompt_preferences.dart';
 import 'package:dejapoo/features/home/providers/timeline_providers.dart';
 import 'package:dejapoo/features/home/widgets/entry_sheet.dart';
 import 'package:dejapoo/features/home/widgets/quick_log_popup.dart';
@@ -11,8 +12,14 @@ import 'package:dejapoo/features/home/widgets/timeline_entry_tile.dart';
 import 'package:dejapoo/features/home/widgets/today_header.dart';
 import 'package:dejapoo/ui/theme/tokens.dart';
 import 'package:dejapoo/ui/widgets/error_retry_widget.dart';
+import 'package:dejapoo/ui/widgets/install_prompt/android_web_detect.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+/// Where the "How to install" action sends Android web visitors.
+const String kAndroidInstallGuideUrl =
+    'https://github.com/ryan-shah/DejaPoo/blob/main/docs/INSTALL_ANDROID.md';
 
 /// The app's home screen showing a today-at-a-glance header and a
 /// reverse-chronological timeline of bowel movements grouped by day.
@@ -36,18 +43,25 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: timelineAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (Object error, StackTrace stack) => ErrorRetryWidget(
-          error: error,
-          onRetry: () => ref.invalidate(timelineProvider),
-        ),
-        data: (List<BowelMovement> entries) {
-          if (entries.isEmpty) {
-            return _EmptyState(summary: summary);
-          }
-          return _TimelineList(entries: entries, summary: summary);
-        },
+      body: Column(
+        children: <Widget>[
+          const _InstallPromptCard(),
+          Expanded(
+            child: timelineAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (Object error, StackTrace stack) => ErrorRetryWidget(
+                error: error,
+                onRetry: () => ref.invalidate(timelineProvider),
+              ),
+              data: (List<BowelMovement> entries) {
+                if (entries.isEmpty) {
+                  return _EmptyState(summary: summary);
+                }
+                return _TimelineList(entries: entries, summary: summary);
+              },
+            ),
+          ),
+        ],
       ),
       // NOTE: intentionally not using FloatingActionButton.tooltip here — its
       // Tooltip wrapper installs its own long-press gesture recognizer, which
@@ -62,6 +76,107 @@ class HomeScreen extends ConsumerWidget {
             onPressed: () => showEntrySheet(context),
             child: const Icon(Icons.add),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A dismissible banner shown only to Android *browser* visitors, pointing
+/// them at the sideloadable APK.
+///
+/// Renders nothing off the web, on non-Android browsers, when the web app is
+/// already installed as a PWA, or once the user has dismissed it (the
+/// dismissal is device-local; see [InstallPromptDismissed]).
+class _InstallPromptCard extends ConsumerWidget {
+  const _InstallPromptCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // isAndroidWebBrowserProvider already folds in the kIsWeb check, so this
+    // is false on every native build.
+    if (!ref.watch(isAndroidWebBrowserProvider)) {
+      return const SizedBox.shrink();
+    }
+    // While the preference is loading, stay hidden rather than flashing a
+    // banner that a returning user already dismissed.
+    final bool dismissed =
+        ref.watch(installPromptDismissedProvider).value ?? true;
+    if (dismissed) return const SizedBox.shrink();
+
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme colors = theme.colorScheme;
+
+    return Card(
+      margin: const EdgeInsets.fromLTRB(
+        Spacing.md,
+        Spacing.md,
+        Spacing.md,
+        Spacing.xs,
+      ),
+      color: colors.secondaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          Spacing.md,
+          Spacing.sm,
+          Spacing.sm,
+          Spacing.sm,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Icon(
+                  Icons.android,
+                  color: colors.onSecondaryContainer,
+                  size: IconSizes.statTileIcon,
+                ),
+                const SizedBox(width: Spacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Install DejaPoo for Android',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: colors.onSecondaryContainer,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Works offline, adds a home-screen icon, and can '
+                        'send daily reminders.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSecondaryContainer,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  iconSize: IconSizes.statTileIcon,
+                  color: colors.onSecondaryContainer,
+                  tooltip: 'Dismiss',
+                  onPressed: () => ref
+                      .read(installPromptDismissedProvider.notifier)
+                      .setDismissed(true),
+                ),
+              ],
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => launchUrl(
+                  Uri.parse(kAndroidInstallGuideUrl),
+                  mode: LaunchMode.externalApplication,
+                ),
+                child: const Text('How to install'),
+              ),
+            ),
+          ],
         ),
       ),
     );

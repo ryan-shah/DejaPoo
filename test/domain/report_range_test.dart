@@ -42,63 +42,80 @@ void main() {
     });
   });
 
-  group('ReportRange.week', () {
-    test('starts on Monday and ends on Sunday', () {
-      // 2026-07-17 is a Friday.
+  group('ReportRange.last7Days', () {
+    test('anchor is the LAST day of a trailing 7-day window', () {
+      // 2026-07-17 is a Friday; the window must NOT snap to a Mon-Sun week.
       final ReportRange range =
-          ReportRange.week(anchor: DateTime(2026, 7, 17));
-      expect(range.firstDay.weekday, DateTime.monday);
-      expect(range.lastDay.weekday, DateTime.sunday);
-      expect(range.firstDay, DateTime(2026, 7, 13));
-      expect(range.lastDay, DateTime(2026, 7, 19));
+          ReportRange.last7Days(anchor: DateTime(2026, 7, 17, 14, 30));
+      expect(range.firstDay, DateTime(2026, 7, 11));
+      expect(range.lastDay, DateTime(2026, 7, 17));
+      expect(range.anchor, DateTime(2026, 7, 17));
+      expect(range.lastDay.difference(range.firstDay).inDays, 6);
     });
 
-    test('anchor on Monday stays in the same week', () {
+    test('window does not snap to an ISO calendar week', () {
+      // A Monday anchor ENDS the window, so the window starts on a Tuesday.
       final ReportRange range =
-          ReportRange.week(anchor: DateTime(2026, 7, 13));
-      expect(range.firstDay, DateTime(2026, 7, 13));
-      expect(range.lastDay, DateTime(2026, 7, 19));
+          ReportRange.last7Days(anchor: DateTime(2026, 7, 13));
+      expect(range.firstDay, DateTime(2026, 7, 7));
+      expect(range.lastDay, DateTime(2026, 7, 13));
+      expect(range.firstDay.weekday, DateTime.tuesday);
     });
 
-    test('anchor on Sunday stays in the same week', () {
+    test('next steps the window forward 7 days', () {
       final ReportRange range =
-          ReportRange.week(anchor: DateTime(2026, 7, 19));
-      expect(range.firstDay, DateTime(2026, 7, 13));
-      expect(range.lastDay, DateTime(2026, 7, 19));
-    });
-
-    test('next steps forward 7 days, still Monday-Sunday', () {
-      final ReportRange range =
-          ReportRange.week(anchor: DateTime(2026, 7, 17));
+          ReportRange.last7Days(anchor: DateTime(2026, 7, 17));
       final ReportRange nextRange = range.next();
-      expect(nextRange.firstDay, DateTime(2026, 7, 20));
-      expect(nextRange.lastDay, DateTime(2026, 7, 26));
-      expect(nextRange.firstDay.weekday, DateTime.monday);
-      expect(nextRange.lastDay.weekday, DateTime.sunday);
+      expect(nextRange.firstDay, DateTime(2026, 7, 18));
+      expect(nextRange.lastDay, DateTime(2026, 7, 24));
+      expect(nextRange.anchor, DateTime(2026, 7, 24));
     });
 
-    test('previous steps backward 7 days, still Monday-Sunday', () {
+    test('previous steps the window backward 7 days', () {
       final ReportRange range =
-          ReportRange.week(anchor: DateTime(2026, 7, 17));
+          ReportRange.last7Days(anchor: DateTime(2026, 7, 17));
       final ReportRange prevRange = range.previous();
-      expect(prevRange.firstDay, DateTime(2026, 7, 6));
-      expect(prevRange.lastDay, DateTime(2026, 7, 12));
+      expect(prevRange.firstDay, DateTime(2026, 7, 4));
+      expect(prevRange.lastDay, DateTime(2026, 7, 10));
+      expect(prevRange.anchor, DateTime(2026, 7, 10));
     });
 
-    test('week crossing month boundary steps correctly', () {
-      // 2026-02-01 is a Sunday, so the week is Jan 26 - Feb 1.
+    test('repeated stepping never re-snaps to a calendar week', () {
+      ReportRange range = ReportRange.last7Days(anchor: DateTime(2026, 7, 17));
+      for (int i = 0; i < 4; i++) {
+        range = range.previous();
+      }
+      expect(range.firstDay, DateTime(2026, 6, 13));
+      expect(range.lastDay, DateTime(2026, 6, 19));
+    });
+
+    test('window crosses a month boundary', () {
       final ReportRange range =
-          ReportRange.week(anchor: DateTime(2026, 2, 1));
-      expect(range.firstDay, DateTime(2026, 1, 26));
-      expect(range.lastDay, DateTime(2026, 2, 1));
+          ReportRange.last7Days(anchor: DateTime(2026, 3, 3));
+      expect(range.firstDay, DateTime(2026, 2, 25));
+      expect(range.lastDay, DateTime(2026, 3, 3));
+    });
+
+    test('window crosses a year boundary', () {
+      final ReportRange range =
+          ReportRange.last7Days(anchor: DateTime(2026, 1, 3));
+      expect(range.firstDay, DateTime(2025, 12, 28));
+      expect(range.lastDay, DateTime(2026, 1, 3));
+    });
+
+    test('previous crosses a year boundary', () {
+      final ReportRange range =
+          ReportRange.last7Days(anchor: DateTime(2026, 1, 3)).previous();
+      expect(range.firstDay, DateTime(2025, 12, 21));
+      expect(range.lastDay, DateTime(2025, 12, 27));
     });
 
     test('displayLabel formats as short date range', () {
       final ReportRange range =
-          ReportRange.week(anchor: DateTime(2026, 7, 17));
+          ReportRange.last7Days(anchor: DateTime(2026, 7, 17));
       final String expected =
-          '${localizations.formatShortDate(DateTime(2026, 7, 13))} – '
-          '${localizations.formatShortDate(DateTime(2026, 7, 19))}';
+          '${localizations.formatShortDate(DateTime(2026, 7, 11))} – '
+          '${localizations.formatShortDate(DateTime(2026, 7, 17))}';
       expect(range.displayLabel(localizations), expected);
     });
   });
@@ -252,12 +269,15 @@ void main() {
     });
 
     test('different kinds with same days are not equal', () {
-      final ReportRange week = ReportRange.week(anchor: DateTime(2026, 7, 13));
+      final ReportRange last7 =
+          ReportRange.last7Days(anchor: DateTime(2026, 7, 13));
       final ReportRange custom = ReportRange.custom(
-        from: DateTime(2026, 7, 13),
-        to: DateTime(2026, 7, 19),
+        from: DateTime(2026, 7, 7),
+        to: DateTime(2026, 7, 13),
       );
-      expect(week == custom, isFalse);
+      expect(last7.firstDay, custom.firstDay);
+      expect(last7.lastDay, custom.lastDay);
+      expect(last7 == custom, isFalse);
     });
   });
 }
