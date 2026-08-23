@@ -11,7 +11,7 @@ Open this page **on your Android phone**:
 
 **https://github.com/ryan-shah/DejaPoo/releases/latest**
 
-Under **Assets**, tap **`app-release.apk`**. (Every push to `main` publishes a fresh release
+Under **Assets**, tap the file ending in **`.apk`**. (Every push to `main` publishes a fresh release
 with the APK attached, so "latest" is always the current build.)
 
 Chrome may warn that "this type of file can harm your device" — that's the standard warning
@@ -20,7 +20,7 @@ for any APK. Tap **Download anyway**.
 ## 2. Install it
 
 1. When the download finishes, tap the **download notification** (or open Chrome's
-   **Downloads**, or the **Files** app → **Downloads**, and tap `app-release.apk`).
+   **Downloads**, or the **Files** app → **Downloads**, and tap the `.apk` file).
 2. On Android 8 and newer, Android will block the install with a message like
    **"For your security, your phone is not allowed to install unknown apps from this source."**
    Tap **Settings** in that dialog.
@@ -34,7 +34,7 @@ for any APK. Tap **Download anyway**.
 Nothing is lost; the APK is still on your phone.
 
 - **Get back to the file:** open Chrome → ⋮ menu → **Downloads**, or open the **Files** app →
-  **Downloads**, and tap `app-release.apk` again.
+  **Downloads**, and tap the `.apk` file again.
 - **Grant the permission ahead of time:** **Settings** → **Apps** → **Special app access**
   (on some phones: **Advanced** → **Special access**) → **Install unknown apps** → pick
   **Chrome** → turn on **Allow from this source**. Then tap the APK again.
