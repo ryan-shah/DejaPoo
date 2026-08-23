@@ -30,7 +30,7 @@ design document and phase breakdown.
 - **Quick-log** — FAB long-press opens a compact popup of all 7 Bristol type icons; one tap
   saves an entry instantly (< 5 seconds from launch to logged)
 - **Delete with undo** — swipe left to soft-delete, SnackBar with Undo restores the entry
-- **Reports & analytics** — Day / Week / Month / Year / Custom range selector with prev/next
+- **Reports & analytics** — Day / 7 days / Month / Year / Custom range selector with prev/next
   stepping; Summary tab with stat tiles (total, avg/day, most common type, % healthy, longest
   gap), stacked bar chart by Bristol type, and type-distribution donut; List tab with
   multi-select Bristol type filter chips; all stats update live when entries are logged/edited
