@@ -1,6 +1,7 @@
 import 'package:dejapoo/data/notifications/notification_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -32,13 +33,20 @@ class LocalNotificationService implements NotificationService {
     if (_initialized) return;
 
     tz_data.initializeTimeZones();
+    // `DateTime.now().timeZoneName` must NOT be used here: on Android it
+    // yields an abbreviation or offset ('PDT', 'GMT+05:30') rather than an
+    // IANA name, so `tz.getLocation` throws and `tz.local` silently stays
+    // UTC — which anchors every reminder to the wrong wall-clock time.
+    // `flutter_timezone` returns the real IANA id ('America/Los_Angeles').
     try {
-      final String timeZoneName = DateTime.now().timeZoneName;
-      tz.setLocalLocation(tz.getLocation(timeZoneName));
-    } catch (_) {
-      // Fall back to UTC if the platform timezone name can't be resolved
-      // (e.g. some CI/emulator environments). Scheduling will still work,
-      // just anchored to UTC rather than the device's local timezone.
+      final TimezoneInfo info = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(info.identifier));
+    } catch (error, stackTrace) {
+      // Fall back to UTC if the platform timezone can't be resolved (e.g.
+      // some CI/emulator environments). Scheduling still works, just
+      // anchored to UTC — log it so the misfire is diagnosable.
+      debugPrint('Failed to resolve local timezone, using UTC: $error');
+      debugPrintStack(stackTrace: stackTrace);
     }
 
     const AndroidInitializationSettings androidSettings =
