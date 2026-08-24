@@ -1,4 +1,5 @@
 import 'package:dejapoo/data/auth/google_auth_provider.dart';
+import 'package:dejapoo/data/notifications/notification_preferences.dart';
 import 'package:dejapoo/data/sync/sync_providers.dart';
 import 'package:dejapoo/data/sync/sync_reminder.dart';
 import 'package:dejapoo/data/sync/sync_reminder_preferences.dart';
@@ -35,6 +36,12 @@ class ScaffoldWithNavBar extends ConsumerWidget {
     // only watcher in the app: until the shell watched it, syncTrigger never
     // ran at all.
     ref.watch(syncTriggerProvider);
+
+    // Same reasoning: notificationPreferences' build() re-asserts the daily
+    // reminder schedule, but it only runs once something reads the provider.
+    // Without this the schedule was only ever re-armed by opening Settings,
+    // so a reboot or app update dropped the reminder for good.
+    ref.watch(notificationPreferencesProvider);
 
     final bool showBanner = ref.watch(syncReminderProvider).shouldShow;
 

@@ -1,8 +1,6 @@
 import 'dart:convert';
 
 import 'package:dejapoo/data/db/app_database.dart' hide SyncState;
-import 'package:dejapoo/data/notifications/fake_notification_service.dart';
-import 'package:dejapoo/data/notifications/notification_providers.dart';
 import 'package:dejapoo/data/updates/update_providers.dart';
 import 'package:dejapoo/data/updates/update_service.dart';
 import 'package:dejapoo/features/settings/settings_screen.dart';
@@ -66,9 +64,8 @@ void main() {
       ProviderScope(
         overrides: shellOverrides(
           db,
+          // shellOverrides already supplies a FakeNotificationService.
           extraOverrides: [
-            notificationServiceProvider
-                .overrideWithValue(FakeNotificationService()),
             updateServiceProvider.overrideWithValue(service),
           ],
         ),

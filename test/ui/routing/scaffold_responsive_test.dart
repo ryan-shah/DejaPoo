@@ -1,4 +1,5 @@
 import 'package:dejapoo/data/db/app_database.dart' hide SyncState;
+import 'package:dejapoo/data/notifications/fake_notification_service.dart';
 import 'package:dejapoo/ui/routing/scaffold_with_nav_bar.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -59,15 +60,16 @@ GoRouter _buildTestRouter() {
 Future<void> _pumpAtSize(
   WidgetTester tester,
   Size size,
-  AppDatabase db,
-) async {
+  AppDatabase db, {
+  FakeNotificationService? notifications,
+}) async {
   await tester.binding.setSurfaceSize(size);
   addTearDown(() => tester.binding.setSurfaceSize(null));
 
   final router = _buildTestRouter();
   await tester.pumpWidget(
     ProviderScope(
-      overrides: shellOverrides(db),
+      overrides: shellOverrides(db, notificationService: notifications),
       child: MaterialApp.router(routerConfig: router),
     ),
   );
@@ -141,6 +143,36 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Reports'), findsWidgets);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 1));
+    },
+  );
+
+  // Regression test for dp-5br: notificationPreferences' build() re-arms the
+  // daily reminder, but nothing outside Settings used to read the provider, so
+  // a reminder dropped by a reboot stayed dropped until the user happened to
+  // open Settings. The shell must activate it on every launch.
+  testWidgets(
+    'mounting the shell re-arms an enabled daily reminder',
+    (WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'notification_enabled': true,
+        'notification_hour': 7,
+        'notification_minute': 15,
+      });
+      final notifications = FakeNotificationService();
+
+      await _pumpAtSize(
+        tester,
+        const Size(400, 800),
+        db,
+        notifications: notifications,
+      );
+
+      expect(notifications.scheduleCallCount, 1);
+      expect(notifications.scheduledHour, 7);
+      expect(notifications.scheduledMinute, 15);
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump(const Duration(milliseconds: 1));

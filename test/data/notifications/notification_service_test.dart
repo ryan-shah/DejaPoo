@@ -114,9 +114,10 @@ void main() {
     await n.setTime(7, 15);
 
     // Simulate app restart: fresh container, same shared_preferences store.
+    final FakeNotificationService restartedFake = FakeNotificationService();
     final ProviderContainer restarted = ProviderContainer(
       overrides: [
-        notificationServiceProvider.overrideWithValue(FakeNotificationService()),
+        notificationServiceProvider.overrideWithValue(restartedFake),
       ],
     );
     addTearDown(restarted.dispose);
@@ -126,6 +127,26 @@ void main() {
     expect(prefs.enabled, isTrue);
     expect(prefs.hour, 7);
     expect(prefs.minute, 15);
+
+    // AlarmManager drops pending alarms across reboots and app updates, so
+    // build() must re-arm the schedule — not just restore the preference.
+    expect(restartedFake.scheduleCallCount, 1);
+    expect(restartedFake.scheduledHour, 7);
+    expect(restartedFake.scheduledMinute, 15);
+  });
+
+  test('does not schedule on start when the reminder is disabled', () async {
+    final FakeNotificationService restartedFake = FakeNotificationService();
+    final ProviderContainer restarted = ProviderContainer(
+      overrides: [
+        notificationServiceProvider.overrideWithValue(restartedFake),
+      ],
+    );
+    addTearDown(restarted.dispose);
+
+    await restarted.read(notificationPreferencesProvider.future);
+
+    expect(restartedFake.scheduleCallCount, 0);
   });
 
   test('returns false when no NotificationService is available (web)',
